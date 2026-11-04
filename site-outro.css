@@ -1,6 +1,6 @@
 /* Shared closing section: portfolio proportions, scoped to the closing section only. */
 :root{--outro-bg:#222424;--outro-text:#f0efeb;--outro-muted:#b7b8b5;--outro-line:#565856;--outro-footer-bg:#f0efeb;--outro-footer-text:#222424;--outro-footer-muted:#565856}
-:root[data-theme="night"]{--outro-bg:#141616;--outro-text:#f0efeb;--outro-muted:#b7b8b5;--outro-line:#505452;--outro-footer-bg:#303332;--outro-footer-text:#f0efeb;--outro-footer-muted:#c3c5c0}
+:root[data-theme="night"]{--outro-bg:#f0efeb;--outro-text:#222424;--outro-muted:#565856;--outro-line:#b7b8b5;--outro-footer-bg:#222424;--outro-footer-text:#f0efeb;--outro-footer-muted:#b7b8b5}
 .site-outro{background:var(--outro-bg);color:var(--outro-text);padding:78px 0 38px;margin:0;border:0}
 .outro-inner,.outro-footer__inner{max-width:1248px;width:calc(100% - 112px);margin-left:auto;margin-right:auto;box-sizing:border-box}
 .site-outro .eyebrow{color:var(--outro-muted);font-size:10px;letter-spacing:1.5px;line-height:1.8;margin:0}
