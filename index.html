@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="description" content="Winter Expedition 2027 · 金华出发，北疆与东北双路线，15天冬季自驾路书、Trip Mode与坦克300 Hi4-T出发检查。" />
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%228%22%20fill%3D%22%230b0f14%22/%3E%3Cpath%20d%3D%22M16%204v24M6%2010l20%2012M6%2022l20-12%22%20stroke%3D%22%23b7d9ff%22%20stroke-width%3D%222.5%22/%3E%3Ccircle%20cx%3D%2216%22%20cy%3D%2216%22%20r%3D%224%22%20fill%3D%22%23ff9d2e%22/%3E%3C/svg%3E" />
+<title>WINTER EXPEDITION 2027</title>
+<link rel="stylesheet" href="./vendor/leaflet.css"><link rel="stylesheet" href="./expedition.css">
+<script src="./theme.js"></script><script src="./navigation.js" defer></script>
+<link rel="stylesheet" href="./portfolio-theme.css?v=1">
+</head>
+<body>
+<div class="shell">
+<nav class="site-nav" aria-label="主导航"><a class="brand" href="./index.html" aria-label="Winter Expedition 2027 首页">WE / 2027</a><div class="nav-actions"><button class="close theme-toggle" type="button" data-theme-toggle aria-label="切换到日间模式" aria-pressed="false">日间模式</button><button class="nav-menu-toggle" type="button" aria-expanded="false" aria-controls="siteNavLinks"><span class="nav-menu-icon" aria-hidden="true"></span><span>菜单</span></button></div><div class="nav-links" id="siteNavLinks"><a href="./index.html#overview">在线地图</a><a href="./index.html#conditions">天气与路况</a><a href="./index.html#roadbook">15天路书</a><a href="./prepare.html">出发准备</a><a href="./shopping.html">采购清单</a></div></nav>
+  <section class="hero">
+    
+    <div class="hero-content">
+      <div>
+        <div class="kicker">WINTER EXPEDITION 2027 · DIGITAL ROADBOOK</div>
+        <h1 id="heroTitle">金华 → 北疆雪原</h1>
+        <div class="hero-sub" id="heroSub">15天 · 2名驾驶员 · 坦克300 Hi4-T · 车宿运输段 · 目的地深玩</div>
+        <div class="route-switch">
+          <button class="active" data-route="xinjiang">北疆雪原</button>
+          <button data-route="northeast">东北雪境</button>
+        </div>
+      </div>
+      <div class="hero-photo-mobile" role="img" aria-label="当前路线目的地实景"></div>
+      <div class="hero-bottom">
+        <div class="quick-stats">
+          <div class="stat stat-primary"><span>预计总里程</span><strong id="statKm">9,400</strong><span>KM</span></div>
+          <div class="stat"><strong>15</strong><span>Days</span></div>
+          <div class="stat"><strong id="statPlay">5–6</strong><span>核心游玩天数</span></div>
+          <div class="stat"><strong>2</strong><span>Drivers</span></div>
+        </div>
+        <div><div class="tag" id="heroTag">ALTAY EXPEDITION</div><div id="heroPhotoCredit" class="photo-credit hero-credit"></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="overview">
+    <div class="section-head">
+      <div><div class="kicker">ROUTE OVERVIEW</div><h2>路线总览</h2><p class="lead" id="overviewLead">前后高速强行军，中段进入赛里木湖和阿勒泰雪区。重点是大尺度雪原、冰湖、山脉与荒野公路。</p></div>
+    </div>
+    <div class="grid">
+      <div class="card map-card">
+        
+        <div id="routeCanvas" aria-label="双路线在线地图"></div><div id="mapStatus" class="mini" role="status"></div><div class="map-tools"><button id="fitMap" class="close">全程视图</button><a id="amapRoute" class="link-button" target="_blank" rel="noopener">高德地图</a></div>
+        <div class="route-note">
+          <div><div class="kicker">TOTAL DISTANCE</div><div class="big-number" id="mapKm">≈ 9,400 KM</div></div>
+          <div class="mini" id="mapNote">节点连线用于行程总览，不代表道路导航 · OSM地图 / 高德导航</div>
+        </div>
+      </div>
+      <div class="side-stack">
+        <div class="card mission-card">
+          <div class="kicker">MISSION PROFILE</div>
+          <h3 id="missionTitle">冬季远征型</h3>
+          <div class="metric-row">
+            <div class="metric"><strong id="driveDays">8</strong><span>运输日</span></div>
+            <div class="metric"><strong id="snowDays">6</strong><span>雪区日</span></div>
+            <div class="metric"><strong id="sleepDays">7+</strong><span>车宿夜</span></div>
+            <div class="metric"><strong id="bufferDays">1</strong><span>机动日</span></div>
+          </div>
+        </div>
+        <div class="card risk-card">
+          <div class="kicker">WINTER RISKS</div><h3>沿途重点风险</h3>
+          <div id="risks"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+<section class="section" id="conditions"><div class="section-head"><div><div class="kicker">LIVE FIELD CONDITIONS</div><h2>天气与通行核验</h2><p class="lead">查看沿途天气，出车前核验通行状态。</p></div></div><div class="conditions-controls"><label><span>目的地</span><select id="weatherPlace" aria-label="天气查询目的地"></select></label><button id="refreshWeather" class="close">刷新天气</button><a id="pointNavigation" class="link-button" target="_blank" rel="noopener">高德导航</a></div><div id="weatherStatus" class="mini" aria-live="polite">正在查询天气…</div><div id="currentWeather" class="weather-current"></div><div id="forecast" class="forecast"></div><details class="weather-credit"><summary>数据来源与2027预报说明</summary><p class="mini">2027春节天气尚未进入预报窗口。这里显示当前日期的未来7天预报。气象模型数据：<a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a> · <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a> · 时间：北京时间。模型预报不等同于现场测量或官方预警。</p></details><div class="card road-panel"><div class="section-head"><div><div class="kicker">2027 ROAD CHECK</div><h3>道路与景区通行</h3></div><span class="status-pill">通行状态待核验</span></div><p class="road-intro">出发前打开官方公告，确认封路、限行及景区准入。</p><div id="roadSources" class="road-sources"></div><details class="road-process"><summary>何时核验，以及如何处理封路</summary><div class="road-plan"><div><strong>出发前7天</strong><p>核对2027春节交通组织、景区车辆准入、冬季住宿和停车安排。</p></div><div><strong>前一晚</strong><p>查次日降雪与风速，核对高速入口、山区支线是否开放。</p></div><div><strong>当天出车前</strong><p>打开官方通告与高德路线，确认收费站状态；如封路，先落实住宿再重排行程。</p></div></div><p class="mini">本站未自动获取封路事件。通行状态以主管部门和景区当日公告为准。</p></details><label class="check"><input id="roadChecked" type="checkbox"><span>已在官方渠道核验今天的通行信息</span></label><p id="roadCheckedTime" class="mini">尚未记录核验时间。勾选仅记录你的核验，不代表系统确认道路畅通。</p></div></section>  <section class="section" id="roadbook">
+    <div class="section-head">
+      <div><div class="kicker">15-DAY ROADBOOK</div><h2>每日执行路线</h2><p class="lead">运输日只负责推进；真正的游玩时间留在雪区。点击任意一天，可同步到下方“Trip Mode”。</p></div>
+    </div>
+    <div class="timeline" id="timeline"></div>
+  </section>
+
+  <section class="section">
+    <div class="section-head">
+      <div><div class="kicker">CORE STOPS</div><h2>核心目的地</h2></div>
+    </div>
+    <p class="mini">目的地实景 · 拍摄季节与地点见卡片说明</p><div class="destinations" id="destinations"></div>
+  </section>
+
+  <section class="section">
+    <div class="section-head">
+      <div><div class="kicker">VEHICLE SYSTEM</div><h2>坦克300 Hi4-T 出发检查</h2><p class="lead">勾选记录保存在当前浏览器，出发前逐项核对。</p></div>
+    </div>
+    <div class="card vehicle-card"><div class="checklist-heading"><strong>车辆与随行装备</strong><span id="vehicleCount" aria-live="polite">0 / 12 已完成</span></div>
+      <div class="checkgrid" id="checkgrid"></div><a class="link-button checklist-link" href="./prepare.html">查看完整准备清单</a><a class="link-button checklist-link" href="./shopping.html">整理双人采购清单</a>
+    </div>
+  </section>
+
+  <div class="tripbar">
+    <div><strong id="tripSummary">DAY 01 · 金华 → 河南/陕西方向</strong></div>
+    <button id="openTrip">今日行程</button>
+  </div>
+
+  <div class="footer">WINTER EXPEDITION 2027 · Site v10 · 路况、景区开放与天气均需在出发前按2027实时信息重新校准。</div>
+</div>
+
+<div class="trip-mode" id="tripMode" role="dialog" aria-modal="true" aria-label="每日行程 Trip Mode" hidden>
+  <div class="trip-header"><div class="kicker">行程模式 · TRIP MODE</div><button class="close theme-toggle" type="button" data-theme-toggle aria-label="切换到日间模式" aria-pressed="false">日间模式</button><button class="close" id="closeTrip">关闭</button></div>
+  <div class="trip-main">
+    <div class="today" id="tripDay">DAY 01 / 15</div>
+    <h3 id="tripRoute">金华 → 河南/陕西方向</h3>
+    <p class="lead" id="tripDesc">运输日。两人轮换，优先高速服务区休息，不追求通宵。</p>
+    <div class="trip-actions">
+      <div class="action"><strong id="tripKm">≈ 1,050 km</strong><span>预计里程</span></div>
+      <div class="action"><strong id="tripType">运输</strong><span>今日类型</span></div>
+      <div class="action"><strong id="tripSleep">服务区车宿</strong><span>夜间安排</span></div>
+      <div class="action"><strong id="tripRisk">疲劳 / 夜间黑冰</strong><span>主要风险</span></div>
+    </div>
+    <div id="tripDetails"></div>
+    <div class="trip-nav"><button class="close" id="prevDay">上一天</button><button class="close" id="nextDay">下一天</button></div>
+  </div>
+</div>
+
+<script>
+const DATA = {
+  xinjiang:{
+    title:"金华 → 北疆雪原", tag:"ALTAY EXPEDITION", km:"9,400", play:"5–6",
+    lead:"前后高速强行军，中段进入赛里木湖和阿勒泰雪区。重点是大尺度雪原、冰湖、山脉与荒野公路。",
+    mission:"冬季远征型", driveDays:"8", snowDays:"6", sleepDays:"7+", bufferDays:"1",
+    risks:["G30赛里木湖段：降雪、结冰、长下坡","G3014阿勒泰方向：风吹雪、横风、能见度骤降","景区支线：冬季可能临时封闭或限制社会车辆"],
+    stops:["金华","西北运输段","哈密","乌鲁木齐","赛里木湖","克拉玛依","布尔津","阿勒泰"],
+    days:[
+      ["金华 → 河南/陕西方向","≈ 1,050 km","运输","服务区车宿","疲劳 / 夜间黑冰"],
+      ["→ 兰州以西 / 武威","≈ 1,050 km","运输","服务区车宿","低温 / 横风"],
+      ["→ 哈密","≈ 1,150 km","运输","服务区车宿","河西走廊横风"],
+      ["哈密 → 乌鲁木齐 → 奎屯方向","≈ 850 km","运输","服务区或酒店","进入新疆后的冰雪路况"],
+      ["奎屯 → 赛里木湖","≈ 450 km","核心景观","酒店/民宿","赛湖大风 / 结冰"],
+      ["赛里木湖全天","机动","游玩","酒店/民宿","湖区强风 / 低温"],
+      ["赛里木湖 → 克拉玛依/乌尔禾","≈ 650 km","转场","车宿或酒店","夜间侧风"],
+      ["→ 布尔津 → 阿勒泰","≈ 500 km","转场","酒店","风吹雪"],
+      ["阿勒泰周边","机动","游玩","酒店","低温 / 降雪"],
+      ["布尔津 / 喀纳斯方向","机动","游玩","酒店","道路开放情况"],
+      ["禾木 / 阿勒泰雪区","机动","缓冲+游玩","酒店","封路 / 风吹雪"],
+      ["阿勒泰 → 奎屯/乌鲁木齐方向","≈ 800 km","返程","服务区车宿","疲劳 / 风雪"],
+      ["→ 哈密 / 甘肃方向","≈ 1,000 km","返程","服务区车宿","横风"],
+      ["→ 陕西 / 河南方向","≈ 1,100 km","返程","服务区车宿","疲劳"],
+      ["→ 金华","≈ 900 km","返程","到家","返程疲劳"]
+    ],
+    dest:[
+      ["赛里木湖","冰湖 · 雪山 · 大尺度留白","建议完整1天。天气差时宁可延后，不在湖区硬顶强风。"],
+      ["阿勒泰","雪原 · 林海 · 长距离公路","核心目的地，建议至少2天。把真正的休整留在这里。"],
+      ["禾木 / 喀纳斯","木屋 · 厚雪 · 山谷","按2027实际交通组织决定是否自驾进入。"]
+    ]
+  },
+  northeast:{
+    title:"金华 → 东北雪境", tag:"NORTHEAST SNOW ROUTE", km:"6,100", play:"9–10",
+    lead:"两天左右进入东北核心区域，把更多时间留给吉林雾凇、长白山雪林、延边和哈尔滨。补给密度高，整体执行更从容。",
+    mission:"冰雪度假型", driveDays:"5", snowDays:"9", sleepDays:"4–5", bufferDays:"2",
+    risks:["东北高速：寒潮、降雪后可能临时封闭","长白山：天气决定部分景点和道路开放","黑龙江：极端寒潮下夜间车宿要求更高"],
+    stops:["金华","山东/河北","沈阳","吉林市","长白山","延吉","牡丹江","哈尔滨"],
+    days:[
+      ["金华 → 山东北部 / 河北南部","≈ 1,000 km","运输","服务区车宿","疲劳 / 夜间结冰"],
+      ["→ 沈阳 / 吉林方向","≈ 1,050 km","运输","服务区车宿","寒潮 / 黑冰"],
+      ["→ 吉林市","≈ 350–500 km","到达+休整","酒店","城市低温"],
+      ["吉林市全天","机动","游玩","酒店","雾凇受天气影响"],
+      ["吉林 → 长白山","≈ 380 km","雪景转场","酒店","山路结冰"],
+      ["长白山","机动","游玩","酒店","景区天气"],
+      ["长白山","机动","缓冲+游玩","酒店","强风 / 临时关闭"],
+      ["长白山 → 延吉","≈ 250 km","转场","酒店","山路积雪"],
+      ["延吉全天","机动","游玩","酒店","低温"],
+      ["延吉 → 牡丹江 → 哈尔滨","≈ 550 km","转场","酒店","降雪 / 高速管制"],
+      ["哈尔滨全天","机动","游玩","酒店","寒潮"],
+      ["哈尔滨全天","机动","游玩","酒店","寒潮"],
+      ["哈尔滨 → 辽宁 / 河北方向","≈ 900 km","返程","服务区车宿","疲劳 / 黑冰"],
+      ["→ 山东 / 江苏方向","≈ 1,000 km","返程","服务区车宿","疲劳"],
+      ["→ 金华","≈ 700 km","返程","到家","返程疲劳"]
+    ],
+    dest:[
+      ["吉林市","雾凇 · 松花江 · 城市雪景","适合第一站休整，把连续赶路后的节奏降下来。"],
+      ["长白山","雪林 · 山地 · 温泉","建议留2天，用一天做天气缓冲。"],
+      ["哈尔滨","城市冰雪 · 松花江 · 夜景","建议2天，避免抵达当晚玩完就立刻长途返程。"]
+    ]
+  }
+}
+const CHECKS = [
+ "四条真冬季胎状态确认","备胎 / 充气泵 / 补胎工具","防滑链","-30℃以下玻璃水",
+ "12V电瓶负载检测","低温睡袋×2","保温垫 / 车窗保温","一氧化碳报警器",
+ "启动电源","拖车绳 / 雪铲","两天应急食品与饮水","纸质与离线地图"
+];
+
+let current="xinjiang", selectedDay=0;
+const $=s=>document.querySelector(s);
+const $$=s=>[...document.querySelectorAll(s)];
+
+function renderRoute(){
+ const d=DATA[current];
+ $("#heroTitle").textContent=d.title; $("#heroTag").textContent=d.tag; $("#statKm").textContent=d.km; $("#statPlay").textContent=d.play;
+ $("#overviewLead").textContent=d.lead; $("#mapKm").innerHTML=`<span class="map-distance-value">≈ ${d.km}</span><span class="map-distance-unit">KM</span>`; $("#missionTitle").textContent=d.mission;
+ $("#driveDays").textContent=d.driveDays; $("#snowDays").textContent=d.snowDays; $("#sleepDays").textContent=d.sleepDays; $("#bufferDays").textContent=d.bufferDays;
+ $("#risks").innerHTML=d.risks.map(x=>`<div class="risk"><span class="risk-number">${String(d.risks.indexOf(x)+1).padStart(2,'0')}</span><div>${x}</div></div>`).join("");
+
+ $("#timeline").innerHTML=d.days.map((x,i)=>`
+  <div role="button" tabindex="0" aria-pressed="${i===selectedDay}" class="day ${i===selectedDay?'active':''}" data-i="${i}">
+    <strong>D${String(i+1).padStart(2,'0')}</strong>
+    <div><div class="day-route">${x[0]}</div><div class="day-meta">${x[1]} · ${x[3]} · 风险：${x[4]}</div></div>
+    <div class="pill ${x[2].includes('游玩')?'play':x[2].includes('缓冲')?'buffer':''}">${x[2]}</div>
+  </div>`).join("");
+ $("#destinations").innerHTML=d.dest.map(x=>`<div class="card destination"><div class="kicker">${x[1]}</div><h3 >${x[0]}</h3><div class="mini">${x[2]}</div></div>`).join("");
+ $$(".day").forEach(el=>{el.onclick=()=>selectDay(+el.dataset.i);el.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();el.click();}};});
+ $$(".route-switch button").forEach(b=>{b.setAttribute('aria-pressed',String(b.dataset.route===current));b.classList.toggle('active',b.dataset.route===current);});
+ renderTrip();
+}
+function selectDay(i){selectedDay=Math.max(0,Math.min(14,i));renderRoute();}
+function renderTrip(){
+ $("#prevDay").disabled=selectedDay===0; $("#nextDay").disabled=selectedDay===14;
+ const x=DATA[current].days[selectedDay];
+ $("#tripSummary").textContent=`DAY ${String(selectedDay+1).padStart(2,'0')} · ${x[0]}`;
+ $("#tripDay").textContent=`DAY ${String(selectedDay+1).padStart(2,'0')} / 15`;
+ $("#tripRoute").textContent=x[0]; $("#tripKm").textContent=x[1]; $("#tripType").textContent=x[2]; $("#tripSleep").textContent=x[3]; $("#tripRisk").textContent=x[4];
+ $("#tripDesc").textContent=x[2].includes("运输")||x[2].includes("返程")?"运输日。两人轮换，优先正规高速服务区休息，不以通宵为目标。":"雪区日。时间服从天气与道路状态，不为完成计划硬顶恶劣天气。";
+}
+$$(".route-switch button").forEach(b=>b.onclick=()=>{
+ $$(".route-switch button").forEach(x=>x.classList.remove("active"));b.classList.add("active");
+ current=b.dataset.route;selectedDay=0;renderRoute();
+});
+function updateVehicleCount(){const checked=$$("[data-check]").filter(c=>c.checked).length;$("#vehicleCount").textContent=`${checked} / ${CHECKS.length} 已完成`;}
+$("#checkgrid").innerHTML=CHECKS.map((x,i)=>`<label class="check"><input type="checkbox" data-check="${i}"><span>${x}</span></label>`).join("");
+$$("[data-check]").forEach(c=>{
+ try{c.checked=localStorage.getItem("roadbook-check-"+c.dataset.check)==="1";}catch{}
+ c.onchange=()=>{try{localStorage.setItem("roadbook-check-"+c.dataset.check,c.checked?"1":"0");}catch{}updateVehicleCount();};
+});
+updateVehicleCount();
+function setTrip(open){const modal=$("#tripMode");modal.hidden=!open;modal.classList.toggle('open',open);document.body.style.overflow=open?'hidden':'';$('.shell').inert=open;(open?$('#closeTrip'):$('#openTrip')).focus();}
+$("#openTrip").onclick=()=>setTrip(true);
+$("#closeTrip").onclick=()=>setTrip(false);
+$("#prevDay").onclick=()=>selectDay(selectedDay-1);
+$("#nextDay").onclick=()=>selectDay(selectedDay+1);
+document.addEventListener('keydown',e=>{if(!$('#tripMode').classList.contains('open'))return;if(e.key==='Escape')setTrip(false);if(e.key==='Tab'){const controls=[...$('#tripMode').querySelectorAll('button,a[href],input,select,textarea,summary')].filter(x=>!x.disabled&&x.getClientRects().length>0);if(!controls.length)return;const first=controls[0],last=controls[controls.length-1];if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus();}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}}});
+const modelContext=document.modelContext;
+if(modelContext?.registerTool){try{Promise.resolve(modelContext.registerTool({name:'select_roadbook_day',title:'选择路书日期',description:'切换北疆或东北路线并选择第1至15天，同步可见行程。',inputSchema:{type:'object',properties:{route:{type:'string',enum:['xinjiang','northeast']},day:{type:'integer',minimum:1,maximum:15}},required:['route','day'],additionalProperties:false},annotations:{readOnlyHint:false,untrustedContentHint:false},execute(input){if(!input||!Object.hasOwn(DATA,input.route)||!Number.isInteger(input.day)||input.day<1||input.day>15)throw new Error('Invalid route or day');current=input.route;selectDay(input.day-1);return {route:current,day:selectedDay+1,itinerary:DATA[current].days[selectedDay]};}})).catch(()=>{});}catch{}}
+
+renderRoute();
+</script>
+<script src="./vendor/leaflet.js"></script><script src="./expedition.js"></script><script src="./trip-model.js"></script><script src="./trip.js"></script>
+</body>
+</html>
