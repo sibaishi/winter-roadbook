@@ -19,5 +19,5 @@
   document.addEventListener('click', event => {
     if (!event.target.closest('.site-nav')) setOpen(false);
   });
-  window.matchMedia('(max-width:1000px)').addEventListener('change', () => setOpen(false));
+  window.matchMedia('(max-width:800px)').addEventListener('change', () => setOpen(false));
 })();

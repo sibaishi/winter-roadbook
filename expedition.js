@@ -40,12 +40,12 @@ async function drawMap(){
   const data=await staticRoutes.get(routeKey);
   if(job!==mapJob)return;
   if(data.type!=='FeatureCollection'||!data.features?.some(f=>f.geometry?.type==='LineString'))throw Error('invalid geometry');
-  const lines=L.geoJSON(data,{filter:f=>f.geometry.type==='LineString',style:{color:'#49634f',weight:4,opacity:.95,lineCap:'round',lineJoin:'round'}}).addTo(mapLayer);
+  const lines=L.geoJSON(data,{filter:f=>f.geometry.type==='LineString',style:{color:'#565856',weight:4,opacity:.95,lineCap:'round',lineJoin:'round'}}).addTo(mapLayer);
   // A pale casing keeps the path legible against both light and dark map areas.
   const casing=L.geoJSON(data,{filter:f=>f.geometry.type==='LineString',style:{color:'#f0efeb',weight:7,opacity:.85,interactive:false}}).addTo(mapLayer);casing.bringToBack();
   data.features.filter(f=>f.geometry?.type==='Point').forEach(feature=>{
    const point=feature.geometry.coordinates,key=feature.properties.key,p=PLACES[key];if(!p)return;
-   L.circleMarker([point[1],point[0]],{radius:5,color:'#fff',weight:2,fillColor:'#49634f',fillOpacity:1}).bindPopup(`<strong>${p.name}</strong><p>规划公路参考点${key==='sayram'?' · 湖区附近道路':''}</p><a href="${amap(p,true)}" target="_blank" rel="noopener">高德驾车导航</a>`).addTo(mapLayer);
+   L.circleMarker([point[1],point[0]],{radius:5,color:'#fff',weight:2,fillColor:'#565856',fillOpacity:1}).bindPopup(`<strong>${p.name}</strong><p>规划公路参考点${key==='sayram'?' · 湖区附近道路':''}</p><a href="${amap(p,true)}" target="_blank" rel="noopener">高德驾车导航</a>`).addTo(mapLayer);
   });
   mapBounds=lines.getBounds();realMap.fitBounds(mapBounds,{padding:[30,30]});
   $('#mapStatus').textContent='已载入预生成公路路线 · 主要途经线路，非实时导航';
