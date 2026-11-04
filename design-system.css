@@ -23,3 +23,19 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,su
 
 /* Both sites use the same sticky header and menu affordance. */
 .site-nav{position:sticky;top:0;z-index:40}.nav-menu-icon{width:auto;height:auto;border:0;font-size:15px;line-height:1}.nav-menu-icon:after{content:"＋";position:static;border:0}.nav-menu-toggle[aria-expanded="true"] .nav-menu-icon{transform:rotate(45deg)}
+
+/* Reading progress and interactive surfaces follow the active theme. */
+.reading-progress{position:fixed;inset:0 auto auto 0;height:2px;width:0;background:var(--site-text);z-index:150;pointer-events:none}
+summary:hover,:root[data-theme="night"] summary:hover,:root[data-theme="day"] summary:hover{background:var(--site-soft);color:var(--site-text)}
+summary:focus-visible{background:var(--site-soft);color:var(--site-text)}
+.work-group>summary:hover,.system-details>summary:hover{background:var(--site-soft);color:var(--site-text)}
+:root[data-theme="night"] .nav nav a:hover,:root[data-theme="night"] .site-nav .nav-links a:hover{background:var(--site-soft);color:var(--site-text)}
+:root[data-theme="night"] .hero-art:hover .image-caption{background:#d7d8d3;color:#222424}
+
+/* Keep interaction feedback visible with theme-appropriate emphasis. */
+:root,:root[data-theme="day"]{--site-hover-bg:#e6e5df;--site-hover-border:#80827f}
+:root[data-theme="night"]{--site-hover-bg:#343636;--site-hover-border:#80827f}
+summary:hover,:root[data-theme="night"] summary:hover,:root[data-theme="day"] summary:hover,.work-group>summary:hover,.system-details>summary:hover,summary:focus-visible{background:var(--site-hover-bg);color:var(--site-text);border-color:var(--site-hover-border)}
+.work-filters button:hover,.work-filters button:focus-visible{background:var(--site-hover-bg);color:var(--site-text);border-color:var(--site-hover-border)}
+.work-filters button[aria-pressed="true"]:hover{background:var(--site-text);color:var(--site-bg)}
+.close:hover,.link-button:hover,.theme-toggle:hover,.menu-toggle:hover,.nav-menu-toggle:hover{background:var(--site-hover-bg);border-color:var(--site-hover-border)}

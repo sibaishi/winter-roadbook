@@ -7,3 +7,18 @@
  apply(mode);document.addEventListener('DOMContentLoaded',()=>{apply(mode);document.querySelectorAll('[data-theme-toggle]').forEach(b=>b.addEventListener('click',()=>{apply(mode==='day'?'night':'day');save();}));});
  addEventListener('storage',e=>{if(e.key===key)apply(e.newValue);});addEventListener('pageshow',()=>{try{const c=document.cookie.split('; ').find(x=>x.startsWith('suelr_theme='))?.split('=')[1];if(['day','night'].includes(c))apply(c);}catch{}});
 })();
+
+// One reading indicator on every page; follows Trip Mode's own scroll container.
+(() => {
+ document.addEventListener('DOMContentLoaded',()=>{
+  let bar=document.querySelector('.reading-progress');
+  if(!bar){bar=document.createElement('div');bar.className='reading-progress';bar.setAttribute('aria-hidden','true');document.body.prepend(bar);}
+  let scheduled=false;
+  function update(){const modal=document.querySelector('.trip-mode.open');const target=modal||document.scrollingElement;const range=target.scrollHeight-(modal?target.clientHeight:innerHeight);const top=target.scrollTop;bar.style.width=(range>0?Math.max(0,Math.min(100,top/range*100)):0)+'%';scheduled=false;}
+  function schedule(){if(!scheduled){scheduled=true;requestAnimationFrame(update);}}
+  document.addEventListener('scroll',schedule,true);addEventListener('resize',schedule);addEventListener('load',schedule);
+  const modal=document.querySelector('.trip-mode');if(modal)new MutationObserver(schedule).observe(modal,{attributes:true,attributeFilter:['class','hidden']});
+  if(window.ResizeObserver)new ResizeObserver(schedule).observe(document.body);
+  document.addEventListener('toggle',schedule,true);document.addEventListener('click',schedule);update();
+ });
+})();
