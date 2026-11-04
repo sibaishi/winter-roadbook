@@ -15,7 +15,45 @@ let realMap=null,mapLayer=null,mapBounds=null,weatherController=null,liveRoute=n
 // OSM coordinates are WGS84; Gaode URI requires GCJ02 coordinates inside mainland China.
 function gcj(p){const x=p.lng-105,y=p.lat-35,pi=Math.PI;let a=-100+2*x+3*y+.2*y*y+.1*x*y+.2*Math.sqrt(Math.abs(x));a+=(20*Math.sin(6*x*pi)+20*Math.sin(2*x*pi))*2/3;a+=(20*Math.sin(y*pi)+40*Math.sin(y/3*pi))*2/3;a+=(160*Math.sin(y/12*pi)+320*Math.sin(y*pi/30))*2/3;let b=300+x+2*y+.1*x*x+.1*x*y+.1*Math.sqrt(Math.abs(x));b+=(20*Math.sin(6*x*pi)+20*Math.sin(2*x*pi))*2/3;b+=(20*Math.sin(x*pi)+40*Math.sin(x/3*pi))*2/3;b+=(150*Math.sin(x/12*pi)+300*Math.sin(x/30*pi))*2/3;const rad=p.lat/180*pi,magic=1-.00669342162296594323*Math.sin(rad)**2,sqrt=Math.sqrt(magic);return {lat:p.lat+a*180/((6378245*(1-.00669342162296594323))/(magic*sqrt)*pi),lng:p.lng+b*180/(6378245/sqrt*Math.cos(rad)*pi)};}
 function amap(p,navigate=false){const c=gcj(p);return navigate?`https://uri.amap.com/navigation?to=${c.lng.toFixed(6)},${c.lat.toFixed(6)},${encodeURIComponent(p.name)}&mode=car&src=winter-expedition&callnative=1`:`https://uri.amap.com/marker?position=${c.lng.toFixed(6)},${c.lat.toFixed(6)}&name=${encodeURIComponent(p.name)}&src=winter-expedition&coordinate=gaode&callnative=0`;}
-function drawMap(){const keys=LIVE_ROUTES[current];$('#amapRoute').href=amap(PLACES[keys[keys.length-1]]);if(!window.L){$('#mapStatus').textContent='在线地图组件加载失败，可使用高德地图链接。';return;}if(!realMap){realMap=L.map('routeCanvas',{scrollWheelZoom:false}).setView([40,106],4);const tiles=L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18,attribution:'© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors'}).addTo(realMap);tiles.on('tileerror',()=>{$('#mapStatus').textContent='部分底图未加载，请检查网络，或打开高德地图。';});tiles.on('load',()=>{$('#mapStatus').textContent='在线底图 · 节点为城市或景区参考位置，连线为行程示意。';});mapLayer=L.layerGroup().addTo(realMap);}mapLayer.clearLayers();const points=keys.map(k=>[PLACES[k].lat,PLACES[k].lng]);L.polyline(points,{color:'#ff9d2e',weight:3,dashArray:'6 8'}).addTo(mapLayer);keys.forEach(k=>{const p=PLACES[k];L.circleMarker([p.lat,p.lng],{radius:6,color:'#fff',weight:2,fillColor:'#ff9d2e',fillOpacity:1}).bindPopup(`<strong>${p.name}</strong><p>城市 / 景区参考位置</p><a href="${amap(p,true)}" target="_blank" rel="noopener">高德驾车导航</a>`).addTo(mapLayer);});mapBounds=L.latLngBounds(points);realMap.fitBounds(mapBounds,{padding:[30,30]});}
+let mapJob=0;
+const staticRoutes=new Map();
+async function drawMap(){
+ const routeKey=current,job=++mapJob,keys=LIVE_ROUTES[routeKey];
+ $('#amapRoute').href=amap(PLACES[keys[keys.length-1]]);
+ if(!window.L){$('#mapStatus').textContent='地图组件加载失败，可使用高德地图链接。';return;}
+ if(!realMap){
+  realMap=L.map('routeCanvas',{scrollWheelZoom:false}).setView([40,106],4);
+  const tiles=L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18,attribution:'© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors'}).addTo(realMap);
+  const tileStatus=document.createElement('div');tileStatus.id='mapTileStatus';tileStatus.className='mini';tileStatus.setAttribute('role','status');$('#mapStatus').after(tileStatus);
+  tiles.on('tileerror',()=>{tileStatus.textContent='部分地图底图未加载，公路线路仍可单独查看。';});
+  tiles.on('load',()=>{tileStatus.textContent='';});
+  mapLayer=L.layerGroup().addTo(realMap);
+ }
+ mapLayer.clearLayers();
+ mapBounds=L.latLngBounds(keys.map(k=>[PLACES[k].lat,PLACES[k].lng]));
+ realMap.fitBounds(mapBounds,{padding:[30,30]});
+ $('#mapStatus').textContent='正在载入预生成公路路线…';
+ try{
+  if(!staticRoutes.has(routeKey)){
+   staticRoutes.set(routeKey,fetch(`./routes/${routeKey}.geojson?v=1`).then(response=>{if(!response.ok)throw Error('route file');return response.json();}).catch(error=>{staticRoutes.delete(routeKey);throw error;}));
+  }
+  const data=await staticRoutes.get(routeKey);
+  if(job!==mapJob)return;
+  if(data.type!=='FeatureCollection'||!data.features?.some(f=>f.geometry?.type==='LineString'))throw Error('invalid geometry');
+  const lines=L.geoJSON(data,{filter:f=>f.geometry.type==='LineString',style:{color:'#49634f',weight:4,opacity:.95,lineCap:'round',lineJoin:'round'}}).addTo(mapLayer);
+  // A pale casing keeps the path legible against both light and dark map areas.
+  const casing=L.geoJSON(data,{filter:f=>f.geometry.type==='LineString',style:{color:'#f0efeb',weight:7,opacity:.85,interactive:false}}).addTo(mapLayer);casing.bringToBack();
+  data.features.filter(f=>f.geometry?.type==='Point').forEach(feature=>{
+   const point=feature.geometry.coordinates,key=feature.properties.key,p=PLACES[key];if(!p)return;
+   L.circleMarker([point[1],point[0]],{radius:5,color:'#fff',weight:2,fillColor:'#49634f',fillOpacity:1}).bindPopup(`<strong>${p.name}</strong><p>规划公路参考点${key==='sayram'?' · 湖区附近道路':''}</p><a href="${amap(p,true)}" target="_blank" rel="noopener">高德驾车导航</a>`).addTo(mapLayer);
+  });
+  mapBounds=lines.getBounds();realMap.fitBounds(mapBounds,{padding:[30,30]});
+  $('#mapStatus').textContent='已载入预生成公路路线 · 主要途经线路，非实时导航';
+ }catch(error){
+  if(job!==mapJob)return;
+  $('#mapStatus').textContent='公路路线文件加载失败。请刷新重试，或使用高德地图；未以直线替代。';
+ }
+}
 $('#fitMap').onclick=()=>{if(realMap&&mapBounds)realMap.fitBounds(mapBounds,{padding:[30,30]});};
 function weatherText(code){if(code===0)return'晴';if(code<=3)return'多云 / 阴';if(code===45||code===48)return'雾';if(code>=71&&code<=77||code===85||code===86)return'降雪';if(code>=95)return'雷暴';if(code>=51&&code<=67||code>=80&&code<=82)return'降雨';return'天气变化';}
 function number(v,unit=''){return Number.isFinite(v)?`${Math.round(v*10)/10}${unit}`:'暂无数据';}

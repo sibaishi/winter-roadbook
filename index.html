@@ -50,7 +50,7 @@
         <div id="routeCanvas" aria-label="双路线在线地图"></div><div id="mapStatus" class="mini" role="status"></div><div class="map-tools"><button id="fitMap" class="close">全程视图</button><a id="amapRoute" class="link-button" target="_blank" rel="noopener">高德地图</a></div>
         <div class="route-note">
           <div><div class="kicker">TOTAL DISTANCE</div><div class="big-number" id="mapKm">≈ 9,400 KM</div></div>
-          <div class="mini" id="mapNote">节点连线用于行程总览，不代表道路导航 · OSM地图 / 高德导航</div>
+          <div class="mini" id="mapNote">沿公路展示主要途经线路，非完整往返轨迹，不代表实时路况或冬季可通行 · OSRM / OpenStreetMap</div>
         </div>
       </div>
       <div class="side-stack">
@@ -240,7 +240,7 @@ if(modelContext?.registerTool){try{Promise.resolve(modelContext.registerTool({na
 
 renderRoute();
 </script>
-<script src="./vendor/leaflet.js"></script><script src="./expedition.js"></script><script src="./trip-model.js"></script><script src="./trip.js"></script>
+<script src="./vendor/leaflet.js"></script><script src="./expedition.js?v=road-geometry-1"></script><script src="./trip-model.js"></script><script src="./trip.js"></script>
 <script src="./experience.js?v=1e01f81921ed"></script>
 </body>
 </html>
