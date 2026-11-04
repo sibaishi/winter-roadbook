@@ -12,9 +12,10 @@
 <link rel="icon" href="./favicon.ico?v=b72dc2a48f" sizes="any">
 <link rel="apple-touch-icon" href="./assets/apple-touch-icon.png?v=b72dc2a48f">
 <link rel="stylesheet" href="./design-system.css?v=2545f2cd2861">
+<link rel="stylesheet" href="./site-outro.css?v=137a0aad5c22">
 </head>
-<body>
-<div class="shell">
+<body class="roadbook-outro">
+<div class="shell" id="page-top">
 <nav class="site-nav" aria-label="主导航"><a class="brand" href="./index.html" aria-label="Winter Expedition 2027 首页">WE / 2027</a><div class="nav-actions"><button class="close theme-toggle" type="button" data-theme-toggle aria-label="切换到日间模式" aria-pressed="false">日间模式</button><button class="nav-menu-toggle" type="button" aria-expanded="false" aria-controls="siteNavLinks"><span class="nav-menu-icon" aria-hidden="true"></span><span>菜单</span></button></div><div class="nav-links" id="siteNavLinks"><a href="./index.html#overview">在线地图</a><a href="./index.html#conditions">天气与路况</a><a href="./index.html#roadbook">15天路书</a><a href="./prepare.html">出发准备</a><a href="./shopping.html">采购清单</a></div></nav>
   <section class="hero">
     
@@ -101,8 +102,8 @@
     <button id="openTrip">今日行程</button>
   </div>
 
-  <div class="footer">WINTER EXPEDITION 2027 · Site v11 · 路况、景区开放与天气均需在出发前按2027实时信息重新校准。</div>
-</div>
+<div class="footer" hidden aria-hidden="true"></div></div>
+<section class="site-outro" id="contact"><div class="outro-inner"><p class="eyebrow">05 / BEFORE THE NEXT JOURNEY</p><h2>把出发前的准备，<br>变成路上的从容。<span aria-hidden="true">↗</span></h2><p class="outro-lead">两个人、十五天，一份慢慢完善的冬季自驾计划。<br>路线、装备或沿途见闻，欢迎来信交流。</p><a class="outro-email" href="mailto:huang.dylan@foxmail.com">huang.dylan@foxmail.com <span aria-hidden="true">↗</span></a><div class="outro-meta"><a href="./prepare.html">出发准备 ↗</a><a href="./shopping.html">采购清单 ↗</a><span>2027 出行计划 · 尚未出发<br>路况、天气与景区开放请于出发前核验。</span></div></div></section><footer class="outro-footer"><div class="outro-footer__inner"><a class="outro-signature" href="https://www.suelr.com/">DYLAN<span>黄冬冬</span></a><p>© <span id="year">2026</span> Dylan · 冬季远行 · 2027 出行计划</p><a class="outro-top" href="#page-top">回到顶部 ↑</a></div></footer>
 
 <div class="trip-mode" id="tripMode" role="dialog" aria-modal="true" aria-label="每日行程 Trip Mode" hidden>
   <div class="trip-header"><div class="kicker">行程模式 · TRIP MODE</div><button class="close theme-toggle" type="button" data-theme-toggle aria-label="切换到日间模式" aria-pressed="false">日间模式</button><button class="close" id="closeTrip">关闭</button></div>
@@ -230,7 +231,7 @@ $$("[data-check]").forEach(c=>{
  c.onchange=()=>{try{localStorage.setItem("roadbook-check-"+c.dataset.check,c.checked?"1":"0");}catch{}updateVehicleCount();};
 });
 updateVehicleCount();
-function setTrip(open){const modal=$("#tripMode");modal.hidden=!open;modal.classList.toggle('open',open);document.body.style.overflow=open?'hidden':'';$('.shell').inert=open;(open?$('#closeTrip'):$('#openTrip')).focus();}
+function setTrip(open){const modal=$("#tripMode");modal.hidden=!open;modal.classList.toggle('open',open);document.body.style.overflow=open?'hidden':'';document.querySelectorAll('.shell,.site-outro,.outro-footer').forEach(el=>el.inert=open);(open?$('#closeTrip'):$('#openTrip')).focus();}
 $("#openTrip").onclick=()=>setTrip(true);
 $("#closeTrip").onclick=()=>setTrip(false);
 $("#prevDay").onclick=()=>selectDay(selectedDay-1);
