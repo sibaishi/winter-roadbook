@@ -13,6 +13,7 @@
 <link rel="apple-touch-icon" href="./assets/apple-touch-icon.png?v=b72dc2a48f">
 <link rel="stylesheet" href="./design-system.css?v=2545f2cd2861">
 <link rel="stylesheet" href="./site-outro.css?v=light-night-20261104">
+<link rel="stylesheet" href="./route-globe.css?v=1">
 </head>
 <body class="roadbook-outro">
 <div class="shell" id="page-top">
@@ -49,7 +50,9 @@
     <div class="grid">
       <div class="card map-card">
         
-        <div id="routeCanvas" aria-label="双路线在线地图"></div><div id="mapStatus" class="mini" role="status"></div><div class="map-tools"><button id="fitMap" class="close">全程视图</button><a id="amapRoute" class="link-button" target="_blank" rel="noopener">高德地图</a></div>
+        <div class="map-view-switch" role="group" aria-label="地图视角"><button id="viewMap" type="button" aria-pressed="true">二维地图</button><button id="viewGlobe" type="button" aria-pressed="false">三维地球 ↗</button></div>
+        <div id="routeCanvas" aria-label="双路线在线地图"></div>
+        <section class="globe-panel" id="routeGlobe" aria-labelledby="globeTitle" hidden><div class="globe-header"><div><div class="kicker">A DIFFERENT PERSPECTIVE</div><h3 id="globeTitle">三维路线概览</h3><p>从地球视角，看看这段旅程。</p></div></div><div class="globe-stage" id="globeStage"></div><p class="globe-status" id="globeStatus" role="status" aria-live="polite"></p><div class="globe-controls" role="group" aria-label="三维视图操作"><button type="button" id="globePlay" class="close" disabled>播放路线</button><button type="button" id="globeReset" class="close">重置视角</button><button type="button" id="globeZoomIn" class="close" aria-label="放大三维视图">＋</button><button type="button" id="globeZoomOut" class="close" aria-label="缩小三维视图">−</button><button type="button" id="globeRetry" class="close" hidden>重新加载</button></div><p class="globe-notes">拖动旋转 · 滚轮或按钮缩放 · 方向键旋转，R 重置。<span id="globeMotionHint">点击播放后，光点沿线路前进。</span><br>道路：OSRM / © OpenStreetMap contributors（ODbL）。仅展示主要途经线路，非完整往返轨迹；球面不含真实高程，光点不代表车辆实时位置。<br>三维组件：<a href="https://github.com/mrdoob/three.js/blob/r180/LICENSE" target="_blank" rel="noopener">Three.js · MIT</a>，首次使用需联网加载。</p></section><div id="mapStatus" class="mini" role="status"></div><div class="map-tools"><button id="fitMap" class="close">全程视图</button><a id="amapRoute" class="link-button" target="_blank" rel="noopener">高德地图</a></div>
         <div class="route-note">
           <div><div class="kicker">TOTAL DISTANCE</div><div class="big-number" id="mapKm">≈ 9,400 KM</div></div>
           <div class="mini" id="mapNote">沿公路展示主要途经线路，非完整往返轨迹，不代表实时路况或冬季可通行 · OSRM / OpenStreetMap</div>
@@ -244,5 +247,6 @@ renderRoute();
 </script>
 <script src="./vendor/leaflet.js"></script><script src="./expedition.js?v=road-geometry-2"></script><script src="./trip-model.js"></script><script src="./trip.js"></script>
 <script src="./experience.js?v=1e01f81921ed"></script>
+<script src="./route-globe.js?v=1" defer></script>
 </body>
 </html>
