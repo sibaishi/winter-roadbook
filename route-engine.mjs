@@ -4,14 +4,14 @@ export function createEngine(T,stage,{onPick,onFatal,reduced=false}={}){
  let disposed=false,visible=true,frame=0,last=0,flight=null,mode='globe',yaw=0,pitch=0,zoom=1,night=false,landData=null;
  let baseCenter=new T.Vector3(...G.vector(103,40,1)),routeData=null,terrainData=null,terrainBase=0,terrainScale=1;
  let travelerCoord=null,dayCoords=[],allCoords=[],tick=null,animating=false;
- const renderer=new T.WebGLRenderer({antialias:true,powerPreference:'low-power'});renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.6));renderer.outputColorSpace=T.SRGBColorSpace;renderer.setSize(1,1);
+ const renderer=new T.WebGLRenderer({antialias:true,powerPreference:'low-power'});renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.6));renderer.outputColorSpace=T.SRGBColorSpace;renderer.setSize(1,1,false);
  const scene=new T.Scene(),camera=new T.PerspectiveCamera(40,1,.03,120),root=new T.Group();scene.add(root);
  const ambient=new T.AmbientLight(0xffffff,2);scene.add(ambient);const sun=new T.DirectionalLight(0xffffff,2.2);sun.position.set(-4,8,10);scene.add(sun);
  const sphere=new T.Mesh(new T.SphereGeometry(3.5,128,80),new T.MeshStandardMaterial({roughness:.93,metalness:0}));root.add(sphere);
  const allGroup=new T.Group(),dayGroup=new T.Group(),markerGroup=new T.Group(),terrainGroup=new T.Group();root.add(allGroup,dayGroup,markerGroup,terrainGroup);
  const traveler=new T.Mesh(new T.SphereGeometry(.04,16,12),new T.MeshBasicMaterial({color:0xef9b5a}));root.add(traveler);traveler.visible=false;
  const halo=new T.Mesh(new T.RingGeometry(.06,.085,32),new T.MeshBasicMaterial({color:0xef9b5a,side:T.DoubleSide,transparent:true,opacity:.8}));root.add(halo);halo.visible=false;
- const labels=document.createElement('div');labels.className='atlas-labels';stage.replaceChildren(renderer.domElement,labels);const canvas=renderer.domElement;canvas.tabIndex=0;canvas.setAttribute('aria-label','三维路书：拖动旋转，双指或按钮缩放；方向键旋转，R回到全程。');
+ const labels=document.createElement('div');labels.className='atlas-labels';stage.replaceChildren(renderer.domElement,labels);const canvas=renderer.domElement;canvas.style.width='100%';canvas.style.height='100%';canvas.tabIndex=0;canvas.setAttribute('aria-label','三维路书：拖动旋转，双指或按钮缩放；方向键旋转，R回到全程。');
  let width=1,height=1,markers=[];
  const resize=new ResizeObserver(()=>{const w=stage.clientWidth,h=stage.clientHeight;if(w&&h){width=w;height=h;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();invalidate();}});resize.observe(stage);
  function clear(group){for(const o of [...group.children]){group.remove(o);o.traverse(x=>{x.geometry?.dispose();if(x.material){const ms=Array.isArray(x.material)?x.material:[x.material];for(const m of ms){m.map?.dispose();m.dispose();}}});}}

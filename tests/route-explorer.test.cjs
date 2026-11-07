@@ -108,17 +108,25 @@ test('actual Three.js constructs globe, road ribbons and a real-height terrain m
  global.RoadbookGeo=G;
  const THREE=await import(pathToFileURL(path.join(root,'vendor/three/three.module.min.js')).href);
  const previous={document:global.document,ResizeObserver:global.ResizeObserver,MutationObserver:global.MutationObserver,requestAnimationFrame:global.requestAnimationFrame,cancelAnimationFrame:global.cancelAnimationFrame,devicePixelRatio:global.devicePixelRatio};
- let scheduled=null,scene=null;
+ let scheduled=null,scene=null,resizeCallback=null;
  const node=()=>({children:[],style:{},className:'',hidden:false,addEventListener(){},setAttribute(){},append(...items){this.children.push(...items);},replaceChildren(...items){this.children=items;},remove(){},setPointerCapture(){},getContext:()=>({fillRect(){},beginPath(){},moveTo(){},lineTo(){},closePath(){},fill(){},stroke(){}})});
  const stage={...node(),clientWidth:800,clientHeight:480};
  global.document={hidden:false,documentElement:{dataset:{theme:'day'}},createElement:node};global.devicePixelRatio=2;
- global.ResizeObserver=class{constructor(fn){this.fn=fn;}observe(){this.fn();}disconnect(){}};
+ global.ResizeObserver=class{constructor(fn){this.fn=fn;resizeCallback=fn;}observe(){this.fn();}disconnect(){}};
  global.MutationObserver=class{observe(){}disconnect(){}};
  global.requestAnimationFrame=fn=>{scheduled=fn;return 1;};global.cancelAnimationFrame=()=>{scheduled=null;};
- class Renderer{constructor(){this.domElement=node();this.capabilities={getMaxAnisotropy:()=>4};}setPixelRatio(){}setSize(){}setClearColor(){}render(s){scene=s;}dispose(){}}
+ class Renderer{constructor(){this.domElement=node();this.capabilities={getMaxAnisotropy:()=>4};}setPixelRatio(r){this.ratio=r;}setSize(w,h,updateStyle=true){this.domElement.width=Math.floor(w*(this.ratio||1));this.domElement.height=Math.floor(h*(this.ratio||1));if(updateStyle){this.domElement.style.width=w+'px';this.domElement.style.height=h+'px';}}setClearColor(){}render(s){scene=s;}dispose(){}}
  try{
   const {createEngine}=await import(pathToFileURL(path.join(root,'route-engine.mjs')).href+'?fixture=geometry');
   const engine=createEngine({...THREE,WebGLRenderer:Renderer},stage,{reduced:true});
+  const canvas=stage.children[0];
+  assert.equal(canvas.style.width,'100%','canvas CSS width must follow the stage, not stay at initialization size');
+  assert.equal(canvas.style.height,'100%','canvas CSS height must follow the stage');
+  assert.equal(canvas.width,1280);assert.equal(canvas.height,768);
+  stage.clientWidth=360;stage.clientHeight=340;resizeCallback();
+  assert.equal(canvas.width,576);assert.equal(canvas.height,544);
+  assert.equal(canvas.style.width,'100%');assert.equal(canvas.style.height,'100%');
+
   const world=JSON.parse(fs.readFileSync(path.join(root,'data/world.json'),'utf8'));engine.setWorld(world);engine.setRoute(data.xinjiang);
   const segment=G.daily(data.xinjiang,context.plans.xinjiang[4]);engine.setDay(segment.coordinates);scheduled(0);
   assert.ok(scene.children.some(c=>c.isGroup));

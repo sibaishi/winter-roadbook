@@ -19,7 +19,7 @@
   if(loading||engine)return;loading=true;globeFailed=false;$('globeRetry').hidden=true;status('首次载入三维引擎与地理轮廓…');
   const placeholder=document.createElement('div');placeholder.className='atlas-loader';const logo=document.createElement('strong');logo.textContent='N / E';const copy=document.createElement('span');copy.textContent='把旅程放回地理之中';placeholder.append(logo,copy);stage.replaceChildren(placeholder);
   try{
-   const [T,module]=await Promise.all([importThree(),import('./route-engine.mjs?v=2')]);
+   const [T,module]=await Promise.all([importThree(),import('./route-engine.mjs?v=3')]);
    engine=module.createEngine(T,stage,{onPick:focusKey,onFatal:fail,reduced});engine.setVisible(selected&&inView&&$('tripMode').hidden);
    if(!worldPromise)worldPromise=timeout(fetch('./data/world.json?v=1').then(r=>{if(!r.ok)throw Error('地理轮廓未载入');return r.json();})).catch(e=>{worldPromise=null;throw e;});
    try{engine.setWorld(await worldPromise);}catch(e){status('地理轮廓未载入，公路线路仍可查看；可重新加载重试。');$('globeRetry').hidden=false;}
