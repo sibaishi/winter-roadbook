@@ -25,9 +25,19 @@
  function bilinear(grid,width,x,y){x=Math.max(0,Math.min(width-1,x));y=Math.max(0,Math.min(grid.length/width-1,y));const a=Math.floor(x),b=Math.floor(y),c=Math.min(a+1,width-1),d=Math.min(b+1,grid.length/width-1),u=x-a,v=y-b;return grid[b*width+a]*(1-u)*(1-v)+grid[b*width+c]*u*(1-v)+grid[d*width+a]*(1-u)*v+grid[d*width+c]*u*v;}
  function inside(p,b){return p[0]>=b.west&&p[0]<=b.east&&p[1]>=b.south&&p[1]<=b.north;}
  function clipSegments(coords,b){const out=[];let part=[];for(const p of coords){if(inside(p,b))part.push(p);else if(part.length){if(part.length>1)out.push(part);part=[];}}if(part.length>1)out.push(part);return out;}
+ function contours(heights,size,step=200){
+  const result=[],min=Math.min(...heights),max=Math.max(...heights);
+  for(let level=Math.ceil(min/step)*step;level<max;level+=step)for(let row=0;row<size-1;row++)for(let col=0;col<size-1;col++){
+   const ps=[[col,row],[col+1,row],[col+1,row+1],[col,row+1]],hs=ps.map(([x,y])=>heights[y*size+x]),cross=[];
+   for(let e=0;e<4;e++){const j=(e+1)%4;if((hs[e]<level)===(hs[j]<level))continue;const t=(level-hs[e])/(hs[j]-hs[e]);cross.push([ps[e][0]+(ps[j][0]-ps[e][0])*t,ps[e][1]+(ps[j][1]-ps[e][1])*t]);}
+   if(cross.length===2)result.push({level,a:cross[0],b:cross[1]});
+   else if(cross.length===4){const high=hs.reduce((a,b)=>a+b,0)/4>=level;const order=high?[0,3,1,2]:[0,1,2,3];result.push({level,a:cross[order[0]],b:cross[order[1]]},{level,a:cross[order[2]],b:cross[order[3]]});}
+  }
+  return result;
+ }
  function advance(day,progress,seconds,speed=1,stationary=false){
   const next=Math.max(0,progress)+Math.max(0,seconds)*speed/(stationary?3.5:7);
   return next>=1?day>=14?{day:14,progress:1,ended:true}:{day:day+1,progress:0,ended:false}:{day,progress:next,ended:false};
  }
- const api={advance,vector,tile,decode,nearest,sample,daily,lengths,along,bounds,tileKeys,bilinear,inside,clipSegments};if(typeof module!=='undefined')module.exports=api;else root.RoadbookGeo=api;
+ const api={contours,advance,vector,tile,decode,nearest,sample,daily,lengths,along,bounds,tileKeys,bilinear,inside,clipSegments};if(typeof module!=='undefined')module.exports=api;else root.RoadbookGeo=api;
 })(globalThis);

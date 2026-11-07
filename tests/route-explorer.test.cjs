@@ -134,6 +134,7 @@ test('actual Three.js constructs globe, road ribbons and a real-height terrain m
   engine.terrain({place:{name:'test',center:[81.163,44.597]},bounds:b,size:3,depth:8,heights:new Float32Array([2000,2100,2400,1900,2073,2600,2100,2300,3000])});scheduled(20);
   const meshes=[];scene.traverse(o=>{if(o.isMesh)meshes.push(o);});
   const terrain=meshes.find(m=>m.geometry.type==='PlaneGeometry');assert.ok(terrain);
+  const lines=[];scene.traverse(o=>{if(o.isLineSegments)lines.push(o);});assert.ok(lines.length>0,'real terrain has elevation contours');
   assert.equal(terrain.geometry.attributes.position.count,9);
   for(const m of meshes)if(m.geometry.attributes.position)assert.ok([...m.geometry.attributes.position.array].every(Number.isFinite));
   engine.overview(false);engine.setVisible(false);engine.dispose();
@@ -150,4 +151,12 @@ test('terrain interpolation stays continuous when the patch crosses four tile bo
   const expected=(128*256-.5)*.15;assert.ok(Math.abs(mesh.heights[32*65+32]-expected)<.01);
   for(let i=1;i<65;i++)assert.ok(mesh.heights[32*65+i]>mesh.heights[32*65+i-1]);
  }finally{Object.assign(global,previous);}
+});
+
+test('elevation contours interpolate real height crossings and skip flat patches',()=>{
+ assert.deepEqual(G.contours(new Float32Array([100,100,100,100]),2,200),[]);
+ const segments=G.contours(new Float32Array([100,300,100,300]),2,200);
+ assert.equal(segments.length,1);assert.equal(segments[0].level,200);
+ assert.equal(segments[0].a[0],.5);assert.equal(segments[0].b[0],.5);
+ assert.ok(segments[0].a[1]!==segments[0].b[1]);
 });

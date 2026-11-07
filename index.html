@@ -13,7 +13,7 @@
 <link rel="apple-touch-icon" href="./assets/apple-touch-icon.png?v=b72dc2a48f">
 <link rel="stylesheet" href="./design-system.css?v=2545f2cd2861">
 <link rel="stylesheet" href="./site-outro.css?v=light-night-20261104">
-<link rel="stylesheet" href="./route-globe.css?v=2">
+<link rel="stylesheet" href="./route-globe.css?v=4">
 </head>
 <body class="roadbook-outro">
 <div class="shell" id="page-top">
@@ -50,11 +50,11 @@
     <div class="grid">
       <div class="card map-card">
         
-        <div class="map-view-switch" role="group" aria-label="地图视角"><button id="viewMap" type="button" aria-pressed="true">二维地图</button><button id="viewGlobe" type="button" aria-pressed="false">三维地球 ↗</button></div>
+        <div class="map-view-switch" role="group" aria-label="地图视角"><button id="viewMap" type="button" aria-pressed="true">二维地图</button><button id="viewGlobe" type="button" aria-pressed="false">三维山地 ↗</button></div>
         <div id="routeCanvas" aria-label="双路线在线地图"></div>
         <section class="globe-panel" id="routeGlobe" aria-labelledby="globeTitle" hidden>
-<div class="atlas-heading"><div><div class="kicker">THE JOURNEY / IN PERSPECTIVE</div><h3 id="globeTitle">十五天的地理叙事</h3><p>从金华出发，看见沿途的距离、山地与停留。</p></div><div class="atlas-counter" id="globeViewLabel">全程视角</div></div>
-<div class="atlas-layout"><div class="atlas-stage-wrap"><div class="globe-stage" id="globeStage"></div><div class="atlas-hud" id="globeHUD" aria-live="off">DAY 01 / 15</div></div><div class="atlas-toolbar"><div><button type="button" id="globeQuickPlay" class="close" aria-pressed="false" disabled>播放</button><button type="button" id="globeReset" class="close">全程</button><button type="button" id="globeZoomIn" class="close" aria-label="放大三维视图">＋</button><button type="button" id="globeZoomOut" class="close" aria-label="缩小三维视图">−</button><button type="button" id="globeFullscreen" class="close">全屏</button></div><span class="atlas-legend"><i aria-hidden="true"></i>当天参考范围 / 暖色光点为播放位置</span></div></div>
+<div class="atlas-heading"><div><div class="kicker">LANDSCAPES / ALONG THE WAY</div><h3 id="globeTitle">十五天的地理叙事</h3><p>先走进沿途的山地，再把它放回十五天旅程。</p></div><div class="atlas-counter" id="globeViewLabel">全程视角</div></div>
+<div class="atlas-layout"><div class="atlas-stage-wrap"><div class="globe-stage" id="globeStage"></div><div id="globeTerrainLoading" class="atlas-terrain-loading" hidden><div><p class="kicker">INTO THE LANDSCAPE</p><h4 id="globeTerrainLoadingTitle">正在走进山地</h4><p id="globeTerrainLoadingText" role="status">正在读取真实高程…</p><button id="globeTerrainRetry" class="close" type="button" hidden>重新读取地形</button><button id="globeTerrainFallback" class="close" type="button">先看全程定位</button></div></div><div class="atlas-hud" id="globeHUD" aria-live="off">DAY 01 / 15</div></div><div class="atlas-toolbar"><div><button type="button" id="globeQuickPlay" class="close" aria-pressed="false" disabled>播放</button><button type="button" id="globeReset" class="close">全程定位</button><button type="button" id="globeZoomIn" class="close" aria-label="放大三维视图">＋</button><button type="button" id="globeZoomOut" class="close" aria-label="缩小三维视图">−</button><button type="button" id="globeFullscreen" class="close">全屏</button></div><span class="atlas-legend"><i aria-hidden="true"></i><span id="globeLegendLabel">当天参考范围 / 暖色光点为播放位置</span></span></div></div>
 <p class="atlas-status" id="globeStatus" role="status" aria-live="polite">点击目的地，或从十五天计划开始。</p><button type="button" id="globeRetry" class="close" hidden>重新加载三维视图</button>
 <div class="atlas-destinations" id="globeDestinations" role="group" aria-label="拉近目的地"></div>
 <article class="atlas-place" id="globePlace" aria-labelledby="globePlaceName" hidden><figure><img id="globePlaceImage" alt="" loading="lazy" width="960" height="640"><figcaption class="atlas-photo-credit" id="globePhotoCredit"></figcaption></figure><div class="atlas-place-copy"><div class="kicker" id="globePlaceTag"></div><h4 id="globePlaceName"></h4><p id="globePlaceText"></p><p id="globePlaceDays"></p><div class="atlas-playback"><button id="globeTerrain" class="close" type="button">查看真实地形 ↗</button><button id="globeReturn" class="close" type="button">返回全程</button></div><p class="atlas-terrain-status" id="globeTerrainStatus" role="status" aria-live="polite"></p></div></article>
@@ -255,6 +255,6 @@ renderRoute();
 </script>
 <script src="./vendor/leaflet.js"></script><script src="./expedition.js?v=road-geometry-2"></script><script src="./trip-model.js"></script><script src="./trip.js"></script>
 <script src="./experience.js?v=1e01f81921ed"></script>
-<script src="./route-core.js?v=2" defer></script><script src="./route-places.js?v=2" defer></script><script src="./route-globe.js?v=3" defer></script>
+<script src="./route-core.js?v=4" defer></script><script src="./route-places.js?v=2" defer></script><script src="./route-globe.js?v=4" defer></script>
 </body>
 </html>

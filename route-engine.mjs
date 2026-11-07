@@ -1,6 +1,6 @@
 /* Rendering only. Navigation, itinerary and DEM loading live in separate modules. */
 const G=globalThis.RoadbookGeo;
-export function createEngine(T,stage,{onPick,onFatal,reduced=false}={}){
+export function createEngine(T,stage,{onPick,onFatal,onOverview,reduced=false}={}){
  let disposed=false,visible=true,frame=0,last=0,flight=null,mode='globe',yaw=0,pitch=0,zoom=1,night=false,landData=null;
  let baseCenter=new T.Vector3(...G.vector(103,40,1)),routeData=null,terrainData=null,terrainBase=0,terrainScale=1;
  let travelerCoord=null,dayCoords=[],allCoords=[],tick=null,animating=false;
@@ -52,14 +52,17 @@ export function createEngine(T,stage,{onPick,onFatal,reduced=false}={}){
   const map=new T.CanvasTexture(c);map.colorSpace=T.SRGBColorSpace;map.wrapS=T.RepeatWrapping;map.offset.x=.25;map.anisotropy=Math.min(4,renderer.capabilities.getMaxAnisotropy());sphere.material.map?.dispose();sphere.material.map=map;sphere.material.color.set(0xffffff);sphere.material.needsUpdate=true;
  }
  function setTheme(){night=document.documentElement.dataset.theme==='night';renderer.setClearColor(night?0x202828:0xe8ebe4);scene.fog=new T.Fog(night?0x202828:0xe8ebe4,18,45);drawTexture();if(routeData){drawPaths();makeMarkers();}invalidate();}
- function overview(animate=true){mode='globe';sphere.visible=true;terrainGroup.visible=false;const coords=allCoords.length?allCoords:[[100,40]],lngs=coords.map(c=>c[0]),lats=coords.map(c=>c[1]);flyTo([(Math.min(...lngs)+Math.max(...lngs))/2,(Math.min(...lats)+Math.max(...lats))/2],1,animate);drawPaths();makeMarkers();}
+ function overview(animate=true){ambient.intensity=2;sun.intensity=2.2;mode='globe';sphere.visible=true;terrainGroup.visible=false;const coords=allCoords.length?allCoords:[[100,40]],lngs=coords.map(c=>c[0]),lats=coords.map(c=>c[1]);flyTo([(Math.min(...lngs)+Math.max(...lngs))/2,(Math.min(...lats)+Math.max(...lats))/2],1,animate);drawPaths();makeMarkers();}
  function flyTo(center,z=1.7,animate=true){mode='globe';sphere.visible=true;terrainGroup.visible=false;const dest=vector(center,1).normalize();if(reduced||!animate){baseCenter.copy(dest);zoom=z;yaw=pitch=0;flight=null;}else flight={from:baseCenter.clone(),to:dest,fromZoom:zoom,toZoom:z,start:performance.now(),duration:1300};invalidate();}
  function showTerrain(data){
-  flight=null;clear(terrainGroup);terrainData=data;mode='terrain';sphere.visible=false;terrainGroup.visible=true;zoom=1;yaw=0;pitch=.6;
+  flight=null;clear(terrainGroup);terrainData=data;mode='terrain';sphere.visible=false;terrainGroup.visible=true;zoom=1.08;yaw=-.45;pitch=.25;ambient.intensity=night?1.1:.8;sun.intensity=2.8;
   const hs=data.heights;terrainBase=Math.floor(Math.min(...hs)/100)*100;terrainScale=10/((data.bounds.east-data.bounds.west)*111320*Math.cos(data.place.center[1]*Math.PI/180))*1.8;
   const geometry=new T.PlaneGeometry(10,data.depth,data.size-1,data.size-1);geometry.rotateX(-Math.PI/2);const p=geometry.attributes.position,colors=[];
   for(let i=0;i<p.count;i++){const h=hs[i];p.setY(i,(h-terrainBase)*terrainScale);const t=Math.max(0,Math.min(1,h/4500));const low=new T.Color(night?0x3e635d:0x7c9781),mid=new T.Color(night?0x9caa95:0xb4b49d),high=new T.Color(0xe9e9dc);const col=t<.55?low.lerp(mid,t/.55):mid.lerp(high,(t-.55)/.45);colors.push(...col.toArray());}
   p.needsUpdate=true;geometry.setAttribute('color',new T.Float32BufferAttribute(colors,3));geometry.computeVertexNormals();terrainGroup.add(new T.Mesh(geometry,new T.MeshStandardMaterial({vertexColors:true,roughness:1,side:T.DoubleSide})));
+  const contourPositions=[];
+  for(const segment of G.contours(hs,data.size,200))for(const [x,z] of [segment.a,segment.b])contourPositions.push((x/(data.size-1)-.5)*10,(segment.level-terrainBase)*terrainScale+.015,(z/(data.size-1)-.5)*data.depth);
+  if(contourPositions.length){const lines=new T.BufferGeometry();lines.setAttribute('position',new T.Float32BufferAttribute(contourPositions,3));const contourMesh=new T.LineSegments(lines,new T.LineBasicMaterial({color:night?0xc3d1bc:0x344b3b,transparent:true,opacity:night?.22:.32,depthWrite:false}));terrainGroup.add(contourMesh);}
   const edge=[];for(let c=0;c<data.size;c++)edge.push(c);for(let r=1;r<data.size;r++)edge.push(r*data.size+data.size-1);for(let c=data.size-2;c>=0;c--)edge.push((data.size-1)*data.size+c);for(let r=data.size-2;r>0;r--)edge.push(r*data.size);
   const skirtPos=[],skirtIndices=[];for(let i=0;i<=edge.length;i++){const j=edge[i%edge.length];skirtPos.push(p.getX(j),p.getY(j),p.getZ(j),p.getX(j),-.12,p.getZ(j));if(i<edge.length){const a=i*2;skirtIndices.push(a,a+1,a+2,a+1,a+3,a+2);}}
   const skirt=new T.BufferGeometry();skirt.setAttribute('position',new T.Float32BufferAttribute(skirtPos,3));skirt.setIndex(skirtIndices);skirt.computeVertexNormals();terrainGroup.add(new T.Mesh(skirt,new T.MeshStandardMaterial({color:night?0x344c45:0x8b9b85,roughness:1,side:T.DoubleSide})));
@@ -80,7 +83,7 @@ export function createEngine(T,stage,{onPick,onFatal,reduced=false}={}){
  canvas.addEventListener('pointermove',e=>{const old=pointers.get(e.pointerId);if(!old)return;const dx=e.clientX-old.x,dy=e.clientY-old.y;pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});if(pointers.size===2){const [a,b]=[...pointers.values()],dist=Math.hypot(a.x-b.x,a.y-b.y);if(pinch)dolly(dist/pinch);pinch=dist;}else{yaw-=dx*.006;pitch=Math.max(-.9,Math.min(.9,pitch+dy*.006));}invalidate();});
  const release=e=>{pointers.delete(e.pointerId);pinch=0;};canvas.addEventListener('pointerup',release);canvas.addEventListener('pointercancel',release);canvas.addEventListener('lostpointercapture',release);
  canvas.addEventListener('wheel',e=>{e.preventDefault();flight=null;dolly(e.deltaY<0?1.08:1/1.08);},{passive:false});
- canvas.addEventListener('keydown',e=>{if(!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','+','=','-','r','R'].includes(e.key))return;e.preventDefault();flight=null;if(e.key==='ArrowLeft')yaw-=.12;if(e.key==='ArrowRight')yaw+=.12;if(e.key==='ArrowUp')pitch=Math.max(-.9,pitch-.12);if(e.key==='ArrowDown')pitch=Math.min(.9,pitch+.12);if(['+','='].includes(e.key))dolly(1.1);if(e.key==='-')dolly(1/1.1);if(['r','R'].includes(e.key))overview();invalidate();});
+ canvas.addEventListener('keydown',e=>{if(!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','+','=','-','r','R'].includes(e.key))return;e.preventDefault();flight=null;if(e.key==='ArrowLeft')yaw-=.12;if(e.key==='ArrowRight')yaw+=.12;if(e.key==='ArrowUp')pitch=Math.max(-.9,pitch-.12);if(e.key==='ArrowDown')pitch=Math.min(.9,pitch+.12);if(['+','='].includes(e.key))dolly(1.1);if(e.key==='-')dolly(1/1.1);if(['r','R'].includes(e.key)){if(onOverview)onOverview();else overview();}invalidate();});
  canvas.addEventListener('webglcontextlost',e=>{e.preventDefault();onFatal?.();});
  function dolly(factor){zoom=Math.max(.65,Math.min(mode==='globe'?2.35:2.1,zoom*factor));invalidate();}
  const themeObserver=new MutationObserver(()=>{setTheme();if(mode==='terrain'&&terrainData)showTerrain(terrainData);});themeObserver.observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});setTheme();
