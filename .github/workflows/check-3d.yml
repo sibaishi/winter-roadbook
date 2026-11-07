@@ -1,0 +1,24 @@
+name: Check 3D roadbook
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: '22'
+      - name: Check browser modules
+        run: |
+          node --check route-core.js
+          node --check route-places.js
+          node --check route-globe.js
+          node --check route-engine.mjs
+          node --check route-terrain.mjs
+      - name: Verify routes, daily playback and terrain decoding
+        run: node --test tests/route-explorer.test.cjs

@@ -1,134 +1,84 @@
-/* Optional, click-to-load Three.js view. Existing Leaflet navigation remains independent. */
+/* Three-dimensional roadbook controller. The original itinerary stays the single source of truth. */
 (() => {
  'use strict';
- const $=id=>document.getElementById(id), panel=$('routeGlobe'), stage=$('globeStage'), status=$('globeStatus');
- const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
- let selected=false, sceneState=null, loading=false, failed=false, playing=false, visible=true, alive=true, frame=0, routeJob=0, progress=0, last=0;
- let routeKey='xinjiang',routeData=null,threePromise=null;
- const cache=new Map();
- function timeout(promise){return new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(Error('timeout')),20000);promise.then(v=>{clearTimeout(timer);resolve(v);},e=>{clearTimeout(timer);reject(e);});});}
- const engineURL='https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js';
- const currentRoute=()=>document.querySelector('.route-switch [data-route].active')?.dataset.route||'xinjiang';
+ const $=id=>document.getElementById(id),G=RoadbookGeo,panel=$('routeGlobe'),stage=$('globeStage'),reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
+ const routeCache=new Map();let selected=false,inView=true,engine=null,loading=false,playing=false,advancing=false,route=null,routeData=null,day=0,progress=0,dayPath=[],dayLengths=[],place=null,terrainJob=0,terrainAbort=null,loadJob=0,worldPromise=null,terrainMode=false,globeFailed=false;
  const title=key=>key==='xinjiang'?'北疆雪原':'东北雪境';
- const stop=()=>{cancelAnimationFrame(frame);frame=0;last=0;};
- function choose(globe){
-  selected=globe;
-  $('viewMap').setAttribute('aria-pressed',String(!globe));$('viewGlobe').setAttribute('aria-pressed',String(globe));
-  $('routeCanvas').hidden=globe;panel.hidden=!globe;
-  for(const el of [document.querySelector('.map-tools'),$('mapStatus'),$('mapTileStatus')])if(el)el.hidden=globe;
-  if(globe){if(failed){status.textContent='三维组件未能载入，请重试或切回二维地图。';}else init();requestFrame();}
-  else {stop();window.dispatchEvent(new Event('resize'));}
+ const active=()=>({route:typeof current==='string'?current:'xinjiang',day:typeof selectedDay==='number'?selectedDay:0});
+ const status=text=>{$('globeStatus').textContent=text;};
+ const timeout=(promise,ms=18000)=>new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(Error('网络请求超时')),ms);promise.then(x=>{clearTimeout(timer);resolve(x);},e=>{clearTimeout(timer);reject(e);});});
+ function pause(){playing=false;$('globePlay').textContent='播放十五天';$('globePlay').setAttribute('aria-pressed','false');$('globeQuickPlay').textContent='播放';$('globeQuickPlay').setAttribute('aria-pressed','false');engine?.animate(false);}
+ function cancelTerrain(){terrainJob++;terrainAbort?.abort();terrainAbort=null;$('globeTerrain').disabled=false;}
+ function overview(){cancelTerrain();terrainMode=false;engine?.overview();$('globeViewLabel').textContent='全程视角';$('globeTerrainStatus').textContent='';status('全程道路参考 · 拖动旋转，点击目的地拉近查看');}
+ function setVisible(value){selected=value;panel.closest('.grid')?.classList.toggle('map-grid-3d',value);$('viewMap').setAttribute('aria-pressed',String(!value));$('viewGlobe').setAttribute('aria-pressed',String(value));$('routeCanvas').hidden=value;panel.hidden=!value;
+  for(const node of [document.querySelector('.map-tools'),$('mapStatus'),$('mapTileStatus')])if(node)node.hidden=value;
+  if(value){if(!engine&&!loading)init();else engine?.setVisible(inView);}else{pause();cancelTerrain();engine?.setVisible(false);window.dispatchEvent(new Event('resize'));}
  }
- function reportError(){failed=true;loading=false;playing=false;stop();$('globePlay').textContent='播放路线';$('globeRetry').hidden=false;status.textContent='三维视图暂时无法加载，可能是网络或浏览器不支持。二维地图仍可正常使用。';}
- function disposeRoute(){
-  if(!sceneState)return;
-  const {group,labels}=sceneState;
-  for(const child of [...group.children]){group.remove(child);child.geometry?.dispose();if(Array.isArray(child.material))child.material.forEach(m=>m.dispose());else child.material?.dispose();}
-  labels.replaceChildren();sceneState.markers=[];sceneState.path=[];
- }
- function destroy(){
-  stop();if(!sceneState)return;disposeRoute();sceneState.renderer.dispose();sceneState.renderer.domElement.remove();sceneState.labels.remove();sceneState.resize.disconnect();
-  sceneState.sphere.geometry.dispose();sceneState.sphere.material.dispose();
-  for(const child of sceneState.grid.children){child.geometry.dispose();child.material.dispose();}
-  sceneState=null;
- }
- function point(T,lng,lat,r=3.53){const a=lat*Math.PI/180,b=lng*Math.PI/180;return new T.Vector3(r*Math.cos(a)*Math.sin(b),r*Math.sin(a),r*Math.cos(a)*Math.cos(b));}
- function repaint(){
-  if(!sceneState)return;const s=sceneState,night=document.documentElement.dataset.theme==='night';
-  s.renderer.setClearColor(night?0x343636:0xe6e5df,1);s.sphere.material.color.setHex(night?0x262c2d:0xc8ceca);
-  for(const l of s.grid.children)l.material.color.setHex(night?0x495455:0xa4aeaa);
-  s.routeColor=night?0xf0d5a1:0x665339;
-  for(const child of s.group.children)if(child.userData.route)child.material.color.setHex(s.routeColor);
-  requestFrame();
- }
- function resetCamera(){
-  if(!sceneState)return;
-  const s=sceneState;s.yaw=0;s.pitch=0;s.zoom=1;
-  const coords=routeData?.features.find(f=>f.geometry.type==='LineString')?.geometry.coordinates||[[100,40]];
-  const lons=coords.map(c=>c[0]),lats=coords.map(c=>c[1]);
-  s.center=point(s.T,(Math.min(...lons)+Math.max(...lons))/2,(Math.min(...lats)+Math.max(...lats))/2,1).normalize();
-  requestFrame();
- }
- async function loadRoute(){
-  const job=++routeJob,key=currentRoute();routeKey=key;playing=false;progress=0;$('globePlay').textContent='播放路线';$('globePlay').disabled=true;
-  $('globeTitle').textContent=title(key)+' / 三维路线';status.textContent='正在读取公路线路…';
-  try{
-   if(!cache.has(key))cache.set(key,timeout(fetch(`./routes/${key}.geojson?v=1`)).then(r=>{if(!r.ok)throw Error('route');return r.json();}).catch(e=>{cache.delete(key);throw e;}));
-   const data=await cache.get(key);if(job!==routeJob||!alive)return;
-   if(!data.features?.some(f=>f.geometry.type==='LineString'&&f.geometry.coordinates.length>1))throw Error('geometry');
-   routeData=data;if(sceneState)buildRoute();
-  }catch(e){if(job===routeJob)reportError();}
- }
- function buildRoute(){
-  if(!sceneState||!routeData)return;disposeRoute();const s=sceneState,T=s.T;
-  const coords=routeData.features.find(f=>f.geometry.type==='LineString').geometry.coordinates;
-  // Keep the road geometry; sampling limits GPU work without inventing straight waypoint connections.
-  const stride=Math.max(1,Math.ceil(coords.length/1800));const sampled=coords.filter((_,i)=>i%stride===0);if(sampled.at(-1)!==coords.at(-1))sampled.push(coords.at(-1));
-  const path=sampled.map(c=>point(T,c[0],c[1]));s.path=path;s.lengths=[0];
-  for(let i=1;i<path.length;i++)s.lengths.push(s.lengths[i-1]+path[i].distanceTo(path[i-1]));
-  const geometry=new T.BufferGeometry().setFromPoints(path),material=new T.LineBasicMaterial({color:s.routeColor});
-  const line=new T.Line(geometry,material);line.userData.route=true;s.group.add(line);
-  const points=routeData.features.filter(f=>f.geometry.type==='Point');
-  points.forEach((f,i)=>{
-   const c=f.geometry.coordinates,p=point(T,c[0],c[1],3.55),dot=new T.Mesh(new T.SphereGeometry(.035,10,8),new T.MeshBasicMaterial({color:s.routeColor}));dot.position.copy(p);dot.userData.route=true;s.group.add(dot);
-   const key=f.properties.key,label=document.createElement('span');
-   const names={jinhua:'金华',lanzhou:'兰州',wuwei:'武威',hami:'哈密',urumqi:'乌鲁木齐',kuitun:'奎屯',sayram:'赛里木湖',karamay:'克拉玛依',burqin:'布尔津',altay:'阿勒泰',hemu:'禾木',kanas:'喀纳斯',jinan:'济南',shenyang:'沈阳',jilin:'吉林市',changbai:'长白山',yanji:'延吉',mudanjiang:'牡丹江',harbin:'哈尔滨'};
-   label.textContent=names[key]||f.properties.name||'途经点';s.labels.append(label);s.markers.push({p,label,priority:i===0||i===points.length-1});
-  });
-  s.traveler=new T.Mesh(new T.SphereGeometry(.065,12,10),new T.MeshBasicMaterial({color:0xe98748}));s.group.add(s.traveler);s.traveler.position.copy(path[0]);
-  resetCamera();$('globePlay').disabled=false;$('globeRetry').hidden=true;status.textContent=title(routeKey)+' · 拖动旋转，滚轮或按钮缩放';requestFrame();
- }
- function requestFrame(){if(selected&&sceneState&&visible&&!document.hidden&&!failed&&!frame)frame=requestAnimationFrame(render);}
- function render(now){
-  frame=0;if(!sceneState||!selected||!visible||document.hidden||failed)return;
-  const s=sceneState,T=s.T;const dt=last?Math.min((now-last)/1000,.05):0;last=now;
-  const center=s.center.clone().applyAxisAngle(new T.Vector3(0,1,0),s.yaw);const right=new T.Vector3().crossVectors(center,new T.Vector3(0,1,0)).normalize();center.applyAxisAngle(right,s.pitch);
-  s.camera.position.copy(center.multiplyScalar(10/s.zoom));s.camera.lookAt(0,0,0);s.camera.updateMatrixWorld();
-  if(playing&&s.path.length>1){progress=(progress+dt/35)%1;const target=progress*s.lengths.at(-1);let i=1;while(i<s.lengths.length-1&&s.lengths[i]<target)i++;const length=s.lengths[i]-s.lengths[i-1];s.traveler.position.lerpVectors(s.path[i-1],s.path[i],length?(target-s.lengths[i-1])/length:0);}
-  s.renderer.render(s.scene,s.camera);
-  const used=[];for(const {p,label,priority} of [...s.markers].sort((a,b)=>Number(b.priority)-Number(a.priority))){
-   const v=p.clone().project(s.camera),x=(v.x+1)*s.width/2,y=(1-v.y)*s.height/2-10;
-   const front=p.dot(s.camera.position)>3.55*3.55;
-   const collision=used.some(q=>Math.abs(q.x-x)<75&&Math.abs(q.y-y)<25);
-   const show=front&&v.z<1&&x>35&&x<s.width-35&&y>25&&y<s.height&&!collision;
-   label.hidden=!show;if(show){label.style.left=x+'px';label.style.top=y+'px';used.push({x,y});}
-  }
-  if(playing)requestFrame();else last=0;
- }
+ async function importThree(){let error;for(const url of ['./vendor/three/three.module.min.js','https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js','https://unpkg.com/three@0.180.0/build/three.module.js']){try{return await timeout(import(url),15000);}catch(e){error=e;}}throw error;}
  async function init(){
-  if(sceneState||loading||failed)return;loading=true;status.textContent='首次载入三维组件…';
+  if(loading||engine)return;loading=true;globeFailed=false;$('globeRetry').hidden=true;status('首次载入三维引擎与地理轮廓…');
+  const placeholder=document.createElement('div');placeholder.className='atlas-loader';const logo=document.createElement('strong');logo.textContent='N / E';const copy=document.createElement('span');copy.textContent='把旅程放回地理之中';placeholder.append(logo,copy);stage.replaceChildren(placeholder);
   try{
-   if(!threePromise)threePromise=timeout(import(engineURL)).catch(e=>{threePromise=null;throw e;});
-   const T=await threePromise;if(!alive)return;
-   const renderer=new T.WebGLRenderer({antialias:true,alpha:false,powerPreference:'low-power'});renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.5));
-   const scene=new T.Scene(),camera=new T.PerspectiveCamera(42,1,.1,60),sphere=new T.Mesh(new T.SphereGeometry(3.5,64,40),new T.MeshStandardMaterial({roughness:.92,metalness:0}));scene.add(sphere);
-   scene.add(new T.AmbientLight(0xffffff,2));const light=new T.DirectionalLight(0xffffff,2.2);light.position.set(2,6,8);scene.add(light);
-   const grid=new T.Group();scene.add(grid);const addGrid=pts=>grid.add(new T.Line(new T.BufferGeometry().setFromPoints(pts),new T.LineBasicMaterial({transparent:true,opacity:.35})));
-   for(let lat=-60;lat<=75;lat+=15)addGrid(Array.from({length:145},(_,i)=>point(T,i*2.5,lat,3.505)));
-   for(let lng=0;lng<360;lng+=15)addGrid(Array.from({length:73},(_,i)=>point(T,lng,-90+i*2.5,3.505)));
-   const group=new T.Group();scene.add(group);const labels=document.createElement('div');labels.className='globe-labels';labels.setAttribute('aria-hidden','true');
-   stage.replaceChildren(renderer.domElement,labels);renderer.domElement.tabIndex=0;renderer.domElement.setAttribute('aria-label','三维路线地球。方向键旋转，加减键缩放，R重置。');
-   const resize=new ResizeObserver(()=>{if(!sceneState)return;const w=stage.clientWidth,h=stage.clientHeight;if(!w||!h)return;sceneState.width=w;sceneState.height=h;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();requestFrame();});
-   sceneState={T,renderer,scene,camera,sphere,grid,group,labels,resize,markers:[],path:[],center:point(T,100,40,1),yaw:0,pitch:0,zoom:1,width:1,height:1};resize.observe(stage);
-   renderer.domElement.addEventListener('webglcontextlost',event=>{event.preventDefault();reportError();});
-   let drag=null;const canvas=renderer.domElement;
-   canvas.addEventListener('pointerdown',e=>{drag={id:e.pointerId,x:e.clientX,y:e.clientY};canvas.setPointerCapture(e.pointerId);});
-   canvas.addEventListener('pointermove',e=>{if(!drag||e.pointerId!==drag.id)return;sceneState.yaw-=(e.clientX-drag.x)*.006;sceneState.pitch=Math.max(-.8,Math.min(.8,sceneState.pitch+(e.clientY-drag.y)*.006));drag.x=e.clientX;drag.y=e.clientY;requestFrame();});
-   const end=()=>{drag=null;};canvas.addEventListener('pointerup',end);canvas.addEventListener('pointercancel',end);
-   canvas.addEventListener('wheel',e=>{e.preventDefault();zoom(e.deltaY<0?1.1:1/1.1);},{passive:false});
-   canvas.addEventListener('keydown',e=>{if(!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','+','=','-','r','R'].includes(e.key))return;e.preventDefault();if(e.key==='ArrowLeft')sceneState.yaw-=.12;if(e.key==='ArrowRight')sceneState.yaw+=.12;if(e.key==='ArrowUp')sceneState.pitch=Math.max(-.8,sceneState.pitch-.12);if(e.key==='ArrowDown')sceneState.pitch=Math.min(.8,sceneState.pitch+.12);if(['+','='].includes(e.key))zoom(1.1);if(e.key==='-')zoom(1/1.1);if(['r','R'].includes(e.key))resetCamera();requestFrame();});
-   loading=false;repaint();await loadRoute();
-  }catch(e){destroy();reportError();}
+   const [T,module]=await Promise.all([importThree(),import('./route-engine.mjs?v=2')]);
+   engine=module.createEngine(T,stage,{onPick:focusKey,onFatal:fail,reduced});engine.setVisible(selected&&inView&&$('tripMode').hidden);
+   if(!worldPromise)worldPromise=timeout(fetch('./data/world.json?v=1').then(r=>{if(!r.ok)throw Error('地理轮廓未载入');return r.json();})).catch(e=>{worldPromise=null;throw e;});
+   try{engine.setWorld(await worldPromise);}catch(e){status('地理轮廓未载入，公路线路仍可查看；可重新加载重试。');$('globeRetry').hidden=false;}
+   loading=false;await loadRoute(active().route);
+  }catch(e){loading=false;fail();}
  }
- function zoom(factor){if(sceneState){sceneState.zoom=Math.max(.7,Math.min(1.75,sceneState.zoom*factor));requestFrame();}}
- $('viewMap').addEventListener('click',()=>choose(false));$('viewGlobe').addEventListener('click',()=>choose(true));
- $('globeZoomIn').addEventListener('click',()=>zoom(1.15));$('globeZoomOut').addEventListener('click',()=>zoom(1/1.15));$('globeReset').addEventListener('click',()=>{progress=0;if(sceneState?.traveler&&sceneState.path.length)sceneState.traveler.position.copy(sceneState.path[0]);resetCamera();});
- $('globePlay').addEventListener('click',()=>{playing=!playing;$('globePlay').textContent=playing?'暂停播放':'播放路线';requestFrame();});
- $('globeRetry').addEventListener('click',()=>{failed=false;destroy();init();});
- new MutationObserver(repaint).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
- new MutationObserver(()=>{const key=currentRoute();if(key!==routeKey){routeKey=key;if(selected||sceneState)loadRoute();}}).observe(document.querySelector('.route-switch'),{subtree:true,attributes:true,attributeFilter:['class']});
- const observer=new IntersectionObserver(entries=>{visible=entries[0].isIntersecting;if(visible)requestFrame();else stop();});observer.observe(panel);
- document.addEventListener('visibilitychange',()=>{if(document.hidden)stop();else requestFrame();});
- window.addEventListener('pagehide',()=>{stop();});window.addEventListener('pageshow',()=>requestFrame());
- if(reduced)$('globeMotionHint').textContent='已遵循减少动态效果设置，不会自动播放。';
+ function fail(){globeFailed=true;pause();cancelTerrain();engine?.dispose();engine=null;loading=false;status('三维组件未能载入，请重试或切回二维地图。原路书与清单不受影响。');$('globeRetry').hidden=false;$('globePlay').disabled=true;$('globeQuickPlay').disabled=true;}
+ async function loadRoute(key){
+  const job=++loadJob;route=key;routeData=null;pause();cancelTerrain();terrainMode=false;place=null;$('globePlace').hidden=true;$('globeTerrainStatus').textContent='';$('globeViewLabel').textContent='全程视角';$('globeTitle').textContent=title(key)+' · 十五天的地理叙事';$('globePlay').disabled=true;$('globeQuickPlay').disabled=true;renderDestinations();status('正在读取公路参考线路…');
+  try{
+   if(!routeCache.has(key))routeCache.set(key,timeout(fetch(`./routes/${key}.geojson?v=1`).then(r=>{if(!r.ok)throw Error('route');return r.json();})).catch(e=>{routeCache.delete(key);throw e;}));
+   const data=await routeCache.get(key);if(job!==loadJob)return;
+   if(!data.features?.some(f=>f.geometry?.type==='LineString'&&f.geometry.coordinates.length>1))throw Error('Invalid route');
+   routeData=data;engine?.setRoute(data);day=active().day;paintDay();$('globePlay').disabled=false;$('globeQuickPlay').disabled=false;status('全程道路参考 · 点击目的地拉近，或按十五天计划播放');
+  }catch(e){if(job===loadJob){status('公路线路暂时未载入，请重新加载。没有用直线替代道路。');$('globeRetry').hidden=false;}}
+ }
+ function renderDestinations(){const container=$('globeDestinations');container.replaceChildren();for(const p of RoutePlaces[route]){const b=document.createElement('button');b.type='button';b.textContent=p.name+' ↗';b.dataset.place=p.key;b.setAttribute('aria-pressed','false');b.addEventListener('click',()=>focus(p));container.append(b);}}
+ function focusKey(key){const known=RoutePlaces[route].find(p=>p.key===key);if(known){focus(known);return;}const feature=routeData?.features.find(f=>f.geometry.type==='Point'&&f.properties.key===key);if(feature)focus({key,name:feature.properties.name,center:feature.geometry.coordinates,extent:.45,tag:'沿途停靠点',text:'此处为公路参考点。运输日的实际停靠与住宿位置需按当天进度决定。',days:[]});}
+ function focus(p){pause();cancelTerrain();terrainMode=false;place=p;engine?.focus(p);$('globeViewLabel').textContent=p.name+' / 地球视角';$('globePlace').hidden=false;$('globePlace').classList.toggle('no-photo',!p.photo);$('globePlaceName').textContent=p.name;$('globePlaceTag').textContent=p.tag;$('globePlaceText').textContent=p.text;$('globeTerrainStatus').textContent='';
+  const img=$('globePlaceImage');if(p.photo){img.src=p.photo;img.alt=p.name+' · '+p.season;const credit=$('globePhotoCredit');credit.replaceChildren(document.createTextNode(p.season+' · '+p.credit+' · '));for(const [text,url] of [['原图',p.source],['许可',p.license]]){const a=document.createElement('a');a.textContent=text;a.href=url;a.target='_blank';a.rel='noopener';credit.append(a,document.createTextNode(' '));}}else{img.removeAttribute('src');$('globePhotoCredit').replaceChildren();}
+  $('globePlaceDays').textContent=p.days.length?'计划 D'+p.days.map(d=>String(d+1).padStart(2,'0')).join(' / D'):'实际停靠以当日行程为准';
+  for(const b of $('globeDestinations').querySelectorAll('button'))b.setAttribute('aria-pressed',String(b.dataset.place===p.key));status('已拉近 '+p.name+' · 可切换到真实地形');
+ }
+ async function showTerrain(){
+  if(!place||!engine)return;pause();cancelTerrain();const target=place,job=terrainJob,controller=new AbortController();terrainAbort=controller;$('globeTerrain').disabled=true;
+  const timer=setTimeout(()=>controller.abort(),25000);$('globeTerrainStatus').textContent='正在读取真实高程瓦片…';
+  try{const {loadTerrain}=await import('./route-terrain.mjs?v=2');const data=await loadTerrain(target,{signal:controller.signal,onProgress:(a,b)=>{if(job===terrainJob)$('globeTerrainStatus').textContent=`已读取 ${a} / ${b} 块真实高程瓦片…`;}});
+   if(job!==terrainJob||!selected||!engine)return;engine.terrain(data);terrainMode=true;$('globeViewLabel').textContent=target.name+' / 真实地形';
+   $('globeTerrainStatus').textContent=`真实高程约 ${Math.round(data.min)}–${Math.round(data.max)} m · 范围约 ${Math.round(data.widthKm)} × ${Math.round(data.heightKm)} km · 垂直夸张 1.8×。高程设色，不代表实时积雪。`;
+   status('真实地形已载入 · 拖动改变方向，双指或按钮缩放');stage.scrollIntoView({block:'center',behavior:reduced?'auto':'smooth'});
+  }catch(e){if(job===terrainJob)$('globeTerrainStatus').textContent='高程未能载入（网络、超时或跨域限制）。仍保留地球视角；可点击“真实地形”重试，不使用模拟山体代替。';}
+  finally{clearTimeout(timer);if(job===terrainJob){terrainAbort=null;$('globeTerrain').disabled=false;}}
+ }
+ function paintDay(){
+  const n=DATA[route].days[day],plan=TripModel.plans[route][day];$('globeHUD').textContent='D'+String(day+1).padStart(2,'0')+' · '+n[0]+' / '+n[2];$('globeDayTitle').textContent=n[0];$('globeDayNumber').textContent='DAY '+String(day+1).padStart(2,'0')+' / 15';$('globeDayType').textContent=n[2];$('globeDayKm').textContent=n[1]+' · 计划估算';$('globeDaySleep').textContent='落脚：'+plan[5];$('globeDayRisk').textContent='关注：'+n[4];$('globeNext').textContent=day<14?'下一天：'+DATA[route].days[day+1][0]:'抵达金华 · 完成本轮旅程';
+  const segment=G.daily(routeData,plan);dayPath=segment.coordinates;dayLengths=G.lengths(dayPath);progress=0;$('globeProgress').value=0;engine?.setDay(dayPath,0);
+  $('globeDayNote').textContent=segment.stationary?'停留 / 休整日：标记停留在目的地，不虚构城区或景区内移动轨迹。':segment.uncertain?'运输范围示意：途经城市已确定，具体停靠点待定。高亮为参考道路范围，不是当天完整行驶记录。':'高亮对应计划起终点之间的预生成参考道路；返程沿参考道路反向示意，并非独立核验的冬季返程导航。';
+  for(const b of $('globeDays').querySelectorAll('button'))b.setAttribute('aria-current',String(Number(b.dataset.day)===day));$('globePrevious').disabled=day===0;$('globeNextDay').disabled=day===14;
+ }
+ function select(index,automated=false){index=Math.max(0,Math.min(14,index));if(!automated)pause();advancing=automated;try{selectDay(index);}finally{advancing=false;}}
+ function sync(){const a=active();if(a.route!==route){if(engine)loadRoute(a.route);return;}if(a.day!==day&&routeData){if(!advancing)pause();day=a.day;paintDay();}}
+ function tick(dt){if(!playing||!routeData)return;const result=G.advance(day,progress,dt,Number($('globeSpeed').value),dayPath.length<2);
+  if(result.day!==day){select(result.day,true);return;}
+  progress=result.progress;if(result.ended){pause();status('十五天播放完成，已回到金华。');}
+  $('globeProgress').value=Math.round(progress*1000);engine?.move(dayPath,dayLengths,progress);
+ }
+ function play(){if(!engine||!routeData)return;if(playing){pause();return;}if(terrainMode)overview();if(day===14&&progress>=1)select(0);playing=true;$('globePlay').textContent='暂停播放';$('globePlay').setAttribute('aria-pressed','true');$('globeQuickPlay').textContent='暂停';$('globeQuickPlay').setAttribute('aria-pressed','true');engine.animate(true,tick);stage.scrollIntoView({block:'center',behavior:reduced?'auto':'smooth'});}
+ for(let i=0;i<15;i++){const b=document.createElement('button');b.type='button';b.textContent='D'+String(i+1).padStart(2,'0');b.dataset.day=i;b.setAttribute('aria-label','查看第'+(i+1)+'天');b.addEventListener('click',()=>select(i));$('globeDays').append(b);}
+ $('viewMap').addEventListener('click',()=>setVisible(false));$('viewGlobe').addEventListener('click',()=>setVisible(true));$('globePlay').addEventListener('click',play);$('globeQuickPlay').addEventListener('click',play);
+ $('globePrevious').addEventListener('click',()=>select(day-1));$('globeNextDay').addEventListener('click',()=>select(day+1));$('globeReset').addEventListener('click',overview);
+ $('globeZoomIn').addEventListener('click',()=>engine?.dolly(1.15));$('globeZoomOut').addEventListener('click',()=>engine?.dolly(1/1.15));$('globeTerrain').addEventListener('click',showTerrain);$('globeReturn').addEventListener('click',overview);
+ $('globeProgress').addEventListener('input',()=>{pause();progress=Number($('globeProgress').value)/1000;engine?.move(dayPath,dayLengths,progress);});
+ $('globeOpenDay').addEventListener('click',()=>{pause();select(day);setTrip(true);});
+ $('globeRetry').addEventListener('click',()=>{pause();engine?.dispose();engine=null;loading=false;init();});
+ $('globeFullscreen').hidden=!panel.requestFullscreen;$('globeFullscreen').addEventListener('click',async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await panel.requestFullscreen();}catch{status('当前浏览器未允许全屏，可以继续使用内嵌视图。');}});
+ new IntersectionObserver(entries=>{inView=entries[0].isIntersecting;engine?.setVisible(selected&&inView&&$('tripMode').hidden);}).observe(panel);
+ document.addEventListener('visibilitychange',()=>engine?.setVisible(selected&&inView&&$('tripMode').hidden&&!document.hidden));window.addEventListener('pagehide',()=>{pause();cancelTerrain();engine?.setVisible(false);});window.addEventListener('pageshow',()=>engine?.setVisible(selected&&inView&&$('tripMode').hidden));
+ // Existing route switches, 15-day rows and Trip Mode all call these same functions.
+ const original=renderRoute;renderRoute=function(){original();sync();};
+ const originalTrip=setTrip;setTrip=function(open){if(open){pause();engine?.setVisible(false);}originalTrip(open);if(!open)engine?.setVisible(selected&&inView&&$('tripMode').hidden);};
+ if(reduced)$('globeMotionNote').textContent='已遵循减少动态效果偏好：镜头直接定位，不自动播放。';
 })();
